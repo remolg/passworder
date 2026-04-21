@@ -1,0 +1,6 @@
+node_modules/
+dist/
+target/
+release/
+.DS_Store
+Thumbs.db

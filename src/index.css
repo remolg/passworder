@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 20% 98%;
+  --foreground: 222 30% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 30% 11%;
+  --primary: 215 27% 22%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 18% 95%;
+  --secondary-foreground: 222 30% 16%;
+  --muted: 210 18% 95%;
+  --muted-foreground: 215 15% 43%;
+  --accent: 212 24% 92%;
+  --accent-foreground: 222 30% 16%;
+  --destructive: 0 67% 45%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 213 22% 86%;
+  --input: 213 22% 86%;
+  --ring: 215 27% 22%;
+  --radius: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 222 26% 10%;
+    --foreground: 210 40% 96%;
+    --card: 222 22% 13%;
+    --card-foreground: 210 40% 96%;
+    --primary: 210 40% 96%;
+    --primary-foreground: 222 30% 12%;
+    --secondary: 222 18% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 222 18% 18%;
+    --muted-foreground: 214 18% 72%;
+    --accent: 222 18% 20%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 223 16% 24%;
+    --input: 223 16% 24%;
+    --ring: 210 40% 96%;
+  }
+}
+
+* {
+  @apply border-border;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.92));
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-image:
+      radial-gradient(circle at top left, rgba(148, 163, 184, 0.12), transparent 26%),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.96));
+  }
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .panel-surface {
+    @apply bg-card/90 border border-border/80 shadow-soft backdrop-blur;
+  }
+}

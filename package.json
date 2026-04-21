@@ -1,0 +1,73 @@
+{
+  "name": "passworder",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tamamen lokal çalışan Electron tabanlı masaüstü şifre yöneticisi",
+  "author": "Codex",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "renderer:dev": "vite --host 127.0.0.1 --port 1420",
+    "dev": "concurrently -k \"npm:renderer:dev\" \"npm:electron:dev\"",
+    "electron:dev": "wait-on tcp:127.0.0.1:1420 && node electron/dev-runner.cjs",
+    "build": "tsc && vite build",
+    "start": "electron .",
+    "package:dir": "npm run build && electron-builder --dir",
+    "package:win": "npm run build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-slider": "^1.3.6",
+    "@radix-ui/react-switch": "^1.2.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.8.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.9",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.passworder.desktop",
+    "productName": "Passworder",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Passworder-Setup-${version}.${ext}"
+    }
+  }
+}
