@@ -314,7 +314,7 @@ function AppContent({
 
             <aside
               className={cn(
-                "absolute inset-y-0 left-0 z-30 flex w-[84px] flex-col border-r border-white/[0.05] bg-[#0c1528]/92 px-2 py-3 backdrop-blur-md transition-transform duration-150",
+                "absolute inset-y-0 left-0 z-30 flex w-[84px] flex-col bg-[#0c1528]/92 px-2 py-3 backdrop-blur-md transition-transform duration-150",
                 navOpen ? "translate-x-0" : "-translate-x-full",
               )}
             >
@@ -328,12 +328,11 @@ function AppContent({
                       type="button"
                       onClick={() => {
                         setActiveSection(id);
-                        setNavOpen(false);
                       }}
                       className={cn(
                         "group relative flex w-full flex-col items-center justify-center gap-2 rounded-[12px] px-2 py-3 text-center transition-colors",
                         active
-                          ? "bg-white/[0.04] text-primary"
+                          ? "text-primary"
                           : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
                       )}
                     >
@@ -580,8 +579,6 @@ function StatusBar({
   settings?: VaultSettings;
 }) {
   const { t } = useI18n();
-  const autoLockMinutes = settings?.autoLockMinutes ?? defaultAutoLockMinutes ?? 5;
-  const clipboardSeconds = settings?.clipboardClearSeconds ?? 30;
 
   return (
     <footer className="flex h-8 items-center justify-between border-t border-white/[0.05] bg-[#0d1425]/72 px-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -594,12 +591,15 @@ function StatusBar({
         </span>
       </div>
 
-      <div className="flex items-center gap-4">
-        <span>AES-256</span>
-        <span>{t("common.minutesShort", { count: autoLockMinutes })}</span>
-        {!locked ? (
-          <span>{t("common.secondsShort", { count: clipboardSeconds })}</span>
-        ) : null}
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={() => void appWindow.openExternal("https://gitgit.me/remolg")}
+          className="titlebar-no-drag text-[11px] font-medium normal-case tracking-[0.04em] text-[#9fa7ff] transition-colors hover:text-[#c0c1ff]"
+          style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
+        >
+          edit by remolg
+        </button>
       </div>
     </footer>
   );

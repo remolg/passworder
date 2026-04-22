@@ -16,6 +16,7 @@ export interface DesktopVaultApi {
   copyToClipboard: (value: string, clearAfterSeconds: number) => Promise<void>;
   minimizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
+  openExternalUrl: (url: string) => Promise<void>;
 }
 
 declare global {

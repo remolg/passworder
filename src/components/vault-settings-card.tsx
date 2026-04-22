@@ -1,5 +1,7 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Check,
+  ChevronDown,
   ClipboardCheck,
   Globe,
   HardDrive,
@@ -27,6 +29,29 @@ export function VaultSettingsCard({
   onChange,
 }: VaultSettingsCardProps) {
   const { t } = useI18n();
+  const autoLockOptions = useMemo(
+    () =>
+      [1, 3, 5, 10, 15, 30].map((minutes) => ({
+        value: minutes,
+        label: t("common.minutesShort", { count: minutes }),
+      })),
+    [t],
+  );
+  const clipboardOptions = useMemo(
+    () =>
+      [15, 30, 45, 60, 90, 120].map((seconds) => ({
+        value: seconds,
+        label: t("common.secondsShort", { count: seconds }),
+      })),
+    [t],
+  );
+  const languageOptions = useMemo(
+    () => [
+      { value: "en" as const, label: t("common.english") },
+      { value: "tr" as const, label: t("common.turkish") },
+    ],
+    [t],
+  );
 
   return (
     <section className="flex h-full flex-col overflow-hidden">
@@ -63,22 +88,16 @@ export function VaultSettingsCard({
             label={t("settings.autoLockLabel")}
             description={t("settings.autoLockDescription")}
           >
-            <select
+            <SettingsSelect
               value={settings.autoLockMinutes}
-              onChange={(event) =>
+              options={autoLockOptions}
+              onChange={(value) =>
                 onChange({
                   ...settings,
-                  autoLockMinutes: Number(event.target.value),
+                  autoLockMinutes: value,
                 })
               }
-              className="w-full rounded-[10px] border border-transparent bg-white/[0.04] px-3 py-2 text-[13px] text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] outline-none transition-colors focus:ring-1 focus:ring-primary"
-            >
-              {[1, 3, 5, 10, 15, 30].map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {t("common.minutesShort", { count: minutes })}
-                </option>
-              ))}
-            </select>
+            />
           </SettingRow>
 
           <SettingRow
@@ -86,22 +105,16 @@ export function VaultSettingsCard({
             label={t("settings.clipboardLabel")}
             description={t("settings.clipboardDescription")}
           >
-            <select
+            <SettingsSelect
               value={settings.clipboardClearSeconds}
-              onChange={(event) =>
+              options={clipboardOptions}
+              onChange={(value) =>
                 onChange({
                   ...settings,
-                  clipboardClearSeconds: Number(event.target.value),
+                  clipboardClearSeconds: value,
                 })
               }
-              className="w-full rounded-[10px] border border-transparent bg-white/[0.04] px-3 py-2 text-[13px] text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] outline-none transition-colors focus:ring-1 focus:ring-primary"
-            >
-              {[15, 30, 45, 60, 90, 120].map((seconds) => (
-                <option key={seconds} value={seconds}>
-                  {t("common.secondsShort", { count: seconds })}
-                </option>
-              ))}
-            </select>
+            />
           </SettingRow>
 
           <SettingRow
@@ -109,30 +122,16 @@ export function VaultSettingsCard({
             label={t("settings.languageLabel")}
             description={t("settings.languageDescription")}
           >
-            <div className="flex gap-6 border-b border-white/[0.05]">
-              <LanguageOptionButton
-                code="EN"
-                label={t("common.english")}
-                active={settings.language === "en"}
-                onClick={() =>
-                  onChange({
-                    ...settings,
-                    language: "en",
-                  })
-                }
-              />
-              <LanguageOptionButton
-                code="TR"
-                label={t("common.turkish")}
-                active={settings.language === "tr"}
-                onClick={() =>
-                  onChange({
-                    ...settings,
-                    language: "tr",
-                  })
-                }
-              />
-            </div>
+            <SettingsSelect
+              value={settings.language}
+              options={languageOptions}
+              onChange={(value) =>
+                onChange({
+                  ...settings,
+                  language: value,
+                })
+              }
+            />
           </SettingRow>
         </div>
 
@@ -168,47 +167,102 @@ export function VaultSettingsCard({
   );
 }
 
-function LanguageOptionButton({
-  active,
-  code,
-  label,
-  onClick,
+function SettingsSelect<T extends string | number>({
+  value,
+  options,
+  onChange,
 }: {
-  active: boolean;
-  code: string;
-  label: string;
-  onClick: () => void;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const selectedOption =
+    options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="group relative pb-3 pt-1 text-left"
-    >
-      <span
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
         className={cn(
-          "mono-label text-[9px] tracking-[0.14em] transition-colors",
-          active ? "text-primary" : "text-muted-foreground/70",
+          "flex w-full items-center justify-between rounded-[12px] border border-white/[0.06] bg-white/[0.04] px-3 py-2.5 text-left text-[13px] text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)] transition-colors",
+          open && "border-primary/50 bg-white/[0.05]",
         )}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
-        {code}
-      </span>
-      <span
-        className={cn(
-          "mt-1 block text-[13px] font-medium transition-colors",
-          active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground",
-        )}
-      >
-        {label}
-      </span>
-      <span
-        className={cn(
-          "absolute bottom-0 left-0 right-0 h-[1.5px] rounded-full transition-opacity",
-          active ? "bg-primary opacity-100" : "bg-white/[0.08] opacity-0 group-hover:opacity-100",
-        )}
-      />
-    </button>
+        <span className="truncate font-medium">{selectedOption?.label}</span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+            open && "rotate-180 text-primary",
+          )}
+        />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#10192d] p-1 shadow-[0_18px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="space-y-0.5" role="listbox">
+            {options.map((option) => {
+              const active = option.value === value;
+
+              return (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-[10px] px-3 py-2 text-left text-[13px] transition-colors",
+                    active
+                      ? "bg-primary/12 text-foreground"
+                      : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+                  )}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  role="option"
+                  aria-selected={active}
+                >
+                  <span className={cn("font-medium", active && "text-primary")}>
+                    {option.label}
+                  </span>
+                  <Check
+                    className={cn(
+                      "h-4 w-4 transition-opacity",
+                      active ? "opacity-100 text-primary" : "opacity-0",
+                    )}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -85,6 +85,9 @@ function registerIpcHandlers() {
   ipcMain.handle("window:close", async () => {
     mainWindow?.close();
   });
+  ipcMain.handle("window:open-external", async (_event, url) => {
+    await shell.openExternal(url);
+  });
 }
 
 app.whenReady().then(() => {

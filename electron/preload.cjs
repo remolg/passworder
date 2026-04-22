@@ -13,4 +13,5 @@ contextBridge.exposeInMainWorld("passworder", {
     ipcRenderer.invoke("vault:copy-to-clipboard", value, clearAfterSeconds),
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),
+  openExternalUrl: (url) => ipcRenderer.invoke("window:open-external", url),
 });

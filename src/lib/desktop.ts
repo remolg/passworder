@@ -60,4 +60,11 @@ export const appWindow = {
 
     await getDesktopApi().closeWindow();
   },
+  async openExternal(url: string) {
+    if (!window.passworder) {
+      return;
+    }
+
+    await getDesktopApi().openExternalUrl(url);
+  },
 };
