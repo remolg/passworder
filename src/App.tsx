@@ -28,6 +28,7 @@ import {
   type TranslationKey,
   useI18n,
 } from "@/lib/i18n";
+import { getDefaultGeneratorOptions } from "@/lib/password-generator-preferences";
 import { generatePassword } from "@/lib/password-generator";
 import { cn } from "@/lib/utils";
 import {
@@ -465,13 +466,7 @@ function matchesSearch(
 }
 
 function defaultGeneratorOptions(): PasswordGeneratorOptions {
-  return {
-    length: 20,
-    uppercase: true,
-    lowercase: true,
-    numbers: true,
-    symbols: true,
-  };
+  return getDefaultGeneratorOptions();
 }
 
 function WindowShell({

@@ -28,7 +28,8 @@ export function VaultSettingsCard({
   onLockNow,
   onChange,
 }: VaultSettingsCardProps) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
+  const compactTitle = language === "tr" ? "Ayarlar" : "Settings";
   const autoLockOptions = useMemo(
     () =>
       [1, 3, 5, 10, 15, 30].map((minutes) => ({
@@ -55,38 +56,19 @@ export function VaultSettingsCard({
 
   return (
     <section className="flex h-full flex-col overflow-hidden">
-      <div className="px-5 pt-5">
-        <p className="mono-label text-[10px] text-muted-foreground">
-          {t("settings.badge")}
-        </p>
-        <h2 className="mt-2 text-[15px] font-semibold text-foreground">
-          {t("settings.title")}
+      <div className="px-5 pt-4">
+        <h2 className="text-[14px] font-semibold text-foreground">
+          {compactTitle}
         </h2>
-        <p className="mt-2 text-[12px] leading-6 text-muted-foreground">
-          {t("settings.description")}
-        </p>
       </div>
 
-      <div className="mx-5 mt-4 h-px bg-white/[0.05]" />
+      <div className="mx-5 mt-3 h-px bg-white/[0.05]" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-        <div className="flex gap-3 pb-6 pt-5">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <div>
-            <p className="text-[12px] font-medium text-foreground">
-              {t("settings.securityTitle")}
-            </p>
-            <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
-              {t("settings.securityDescription")}
-            </p>
-          </div>
-        </div>
-
         <div className="divide-y divide-white/[0.05]">
           <SettingRow
             icon={<TimerReset className="h-4 w-4" />}
             label={t("settings.autoLockLabel")}
-            description={t("settings.autoLockDescription")}
           >
             <SettingsSelect
               value={settings.autoLockMinutes}
@@ -103,7 +85,6 @@ export function VaultSettingsCard({
           <SettingRow
             icon={<ClipboardCheck className="h-4 w-4" />}
             label={t("settings.clipboardLabel")}
-            description={t("settings.clipboardDescription")}
           >
             <SettingsSelect
               value={settings.clipboardClearSeconds}
@@ -120,7 +101,6 @@ export function VaultSettingsCard({
           <SettingRow
             icon={<Globe className="h-4 w-4" />}
             label={t("settings.languageLabel")}
-            description={t("settings.languageDescription")}
           >
             <SettingsSelect
               value={settings.language}
@@ -268,12 +248,10 @@ function SettingsSelect<T extends string | number>({
 
 function SettingRow({
   children,
-  description,
   icon,
   label,
 }: {
   children: ReactNode;
-  description: string;
   icon: ReactNode;
   label: string;
 }) {
@@ -284,10 +262,7 @@ function SettingRow({
 
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-medium text-foreground">{label}</p>
-          <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
-            {description}
-          </p>
-          <div className="mt-4">{children}</div>
+          <div className="mt-3">{children}</div>
         </div>
       </div>
     </div>

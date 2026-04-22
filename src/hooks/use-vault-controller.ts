@@ -89,10 +89,7 @@ export function useVaultController() {
   }
 
   async function initializeVault(masterPassword: string) {
-    const nextPayload = await runMutation(
-      () => vaultApi.initializeVault(masterPassword),
-      "notice.vaultCreated",
-    );
+    const nextPayload = await runMutation(() => vaultApi.initializeVault(masterPassword));
 
     if (!nextPayload) {
       return false;
@@ -108,10 +105,7 @@ export function useVaultController() {
   }
 
   async function unlockVault(masterPassword: string) {
-    const nextPayload = await runMutation(
-      () => vaultApi.unlockVault(masterPassword),
-      "notice.vaultUnlocked",
-    );
+    const nextPayload = await runMutation(() => vaultApi.unlockVault(masterPassword));
 
     if (!nextPayload) {
       return false;

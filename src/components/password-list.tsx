@@ -39,9 +39,10 @@ export function PasswordList({
   onCopyPassword,
   onCreateNew,
 }: PasswordListProps) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
   const copyFeedback = useCopyFeedback();
+  const compactTitle = language === "tr" ? "Kasa" : "Vault";
 
   function toggleReveal(id: string) {
     setRevealedIds((current) =>
@@ -64,21 +65,11 @@ export function PasswordList({
 
   return (
     <section className="flex h-full flex-col overflow-hidden">
-      <div className="px-5 pt-5">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="mono-label text-[10px] text-muted-foreground">
-              {t("passwords.badge")}
-            </p>
-            <div className="mt-2 flex items-center gap-3">
-              <h2 className="text-[15px] font-semibold text-foreground">
-                {t("passwords.title")}
-              </h2>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                {t("common.itemsCount", { count: entries.length })}
-              </span>
-            </div>
-          </div>
+      <div className="px-5 pt-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-[14px] font-semibold text-foreground">
+            {compactTitle}
+          </h2>
 
           <Button type="button" size="sm" onClick={onCreateNew}>
             <Plus className="h-4 w-4" />
@@ -86,7 +77,7 @@ export function PasswordList({
           </Button>
         </div>
 
-        <div className="relative mt-4">
+        <div className="relative mt-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             autoFocus
@@ -98,7 +89,7 @@ export function PasswordList({
         </div>
       </div>
 
-      <div className="mx-5 mt-4 h-px bg-white/[0.05]" />
+      <div className="mx-5 mt-3 h-px bg-white/[0.05]" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
         {entries.length === 0 ? (
@@ -136,33 +127,33 @@ export function PasswordList({
                           </h3>
                           <button
                             type="button"
-                            onClick={() =>
-                              void handleCopy(`username:${entry.id}`, onCopyUsername, entry)
-                            }
+                           onClick={() =>
+                             void handleCopy(`username:${entry.id}`, onCopyUsername, entry)
+                           }
+                           className={cn(
+                             "mt-1 flex items-center gap-1.5 text-[12px] transition-colors",
+                            usernameCopied
+                              ? "text-primary"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                          title={t("passwords.copyUsername")}
+                        >
+                          {usernameCopied ? (
+                            <Check className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <UserRound className="h-3.5 w-3.5 shrink-0" />
+                          )}
+                          <span className="truncate">
+                            {entry.username || t("passwords.noUsername")}
+                          </span>
+                          <span
                             className={cn(
-                              "mt-1 flex items-center gap-1.5 text-[12px] transition-colors",
+                              "h-1.5 w-1.5 shrink-0 rounded-full bg-primary transition-all duration-200",
                               usernameCopied
-                                ? "text-primary"
-                                : "text-muted-foreground hover:text-foreground",
+                                ? "scale-100 opacity-100"
+                                : "scale-50 opacity-0",
                             )}
-                            title={t("passwords.copyUsername")}
-                          >
-                            {usernameCopied ? (
-                              <Check className="h-3.5 w-3.5 shrink-0" />
-                            ) : (
-                              <UserRound className="h-3.5 w-3.5 shrink-0" />
-                            )}
-                            <span className="truncate">
-                              {entry.username || t("passwords.noUsername")}
-                            </span>
-                            <span
-                              className={cn(
-                                "h-1.5 w-1.5 shrink-0 rounded-full bg-primary transition-all duration-200",
-                                usernameCopied
-                                  ? "scale-100 opacity-100"
-                                  : "scale-50 opacity-0",
-                              )}
-                            />
+                          />
                           </button>
                         </div>
 

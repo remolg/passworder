@@ -32,11 +32,18 @@ export function UnlockScreen({
   onCreateVault,
   onUnlockVault,
 }: UnlockScreenProps) {
-  const { t, resolveText } = useI18n();
+  const { language, t, resolveText } = useI18n();
   const [masterPassword, setMasterPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const compactDescription = hasVault
+    ? language === "tr"
+      ? "Master password ile açın."
+      : "Unlock with your master password."
+    : language === "tr"
+      ? "Master password oluşturun."
+      : "Create your master password.";
 
   async function handleSubmit() {
     setLocalError(null);
@@ -75,34 +82,29 @@ export function UnlockScreen({
     <section className="relative flex flex-1 items-center justify-center overflow-hidden px-6 py-8">
       <div className="w-full max-w-[280px]">
         <form
-          className="panel-surface rounded-[18px] px-6 py-7"
+          className="panel-surface rounded-[18px] px-5 py-6"
           onSubmit={(event) => {
             event.preventDefault();
             void handleSubmit();
           }}
         >
           <div className="flex flex-col items-center text-center">
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.03] text-primary">
-              <ShieldEllipsis className="h-8 w-8" />
-              <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#151d31] text-primary">
-                <ShieldCheck className="h-3.5 w-3.5" />
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/[0.03] text-primary">
+              <ShieldEllipsis className="h-7 w-7" />
+              <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#151d31] text-primary">
+                <ShieldCheck className="h-3 w-3" />
               </div>
             </div>
 
-            <p className="mono-label mt-5 text-[10px] text-muted-foreground">
-              {hasVault ? t("unlock.badgeLocked") : t("unlock.badgeNew")}
-            </p>
-            <h1 className="mt-2 text-[20px] font-semibold text-foreground">
+            <h1 className="mt-4 text-[18px] font-semibold text-foreground">
               {hasVault ? t("unlock.titleLocked") : t("unlock.titleNew")}
             </h1>
-            <p className="mt-3 text-[12px] leading-6 text-muted-foreground">
-              {hasVault
-                ? t("unlock.descriptionLocked")
-                : t("unlock.descriptionNew")}
+            <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+              {compactDescription}
             </p>
           </div>
 
-          <div className="mt-7 space-y-4">
+          <div className="mt-6 space-y-3.5">
             {runtimeMissing ? (
               <p className="text-[12px] leading-6 text-destructive">
                 {t("unlock.runtimeMissing")}
@@ -128,7 +130,7 @@ export function UnlockScreen({
                   type={showPassword ? "text" : "password"}
                   value={masterPassword}
                   onChange={(event) => setMasterPassword(event.target.value)}
-                  placeholder={t("unlock.masterPlaceholder")}
+                  placeholder="••••••••••••"
                   className="pr-11"
                 />
                 <button
@@ -163,7 +165,7 @@ export function UnlockScreen({
                   type={showPassword ? "text" : "password"}
                   value={confirmation}
                   onChange={(event) => setConfirmation(event.target.value)}
-                  placeholder={t("unlock.confirmPlaceholder")}
+                  placeholder="••••••••••••"
                 />
               </div>
             ) : null}
@@ -176,15 +178,6 @@ export function UnlockScreen({
               )}
               {hasVault ? t("unlock.unlockButton") : t("unlock.createButton")}
             </Button>
-          </div>
-
-          <div className="mt-7 pt-5 text-center">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-              {t("unlock.footerSecurity")}
-            </p>
-            <p className="mt-3 break-all text-[11px] leading-6 text-muted-foreground">
-              {storagePath ?? t("unlock.storageFallback")}
-            </p>
           </div>
         </form>
       </div>

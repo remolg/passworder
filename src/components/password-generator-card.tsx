@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n";
+import {
+  getDefaultGeneratorOptions,
+  persistGeneratorLength,
+  DEFAULT_GENERATOR_LENGTH,
+} from "@/lib/password-generator-preferences";
 import { cn } from "@/lib/utils";
 import { generatePassword } from "@/lib/password-generator";
 import { PasswordGeneratorOptions } from "@/types/vault";
@@ -13,14 +18,6 @@ interface PasswordGeneratorCardProps {
   onApply: (value: string) => void;
   onCopy: (value: string) => Promise<boolean>;
 }
-
-const DEFAULT_OPTIONS: PasswordGeneratorOptions = {
-  length: 20,
-  uppercase: true,
-  lowercase: true,
-  numbers: true,
-  symbols: true,
-};
 
 const CHARACTER_WEIGHTS = {
   uppercase: 24,
@@ -34,7 +31,9 @@ export function PasswordGeneratorCard({
   onCopy,
 }: PasswordGeneratorCardProps) {
   const { t, resolveText } = useI18n();
-  const [options, setOptions] = useState(DEFAULT_OPTIONS);
+  const [options, setOptions] = useState<PasswordGeneratorOptions>(() =>
+    getDefaultGeneratorOptions(),
+  );
   const [generated, setGenerated] = useState("");
   const [error, setError] = useState<string | null>(null);
   const copyFeedback = useCopyFeedback();
@@ -64,6 +63,11 @@ export function PasswordGeneratorCard({
       ...options,
       [key]: value,
     };
+
+    if (key === "length" && typeof value === "number") {
+      persistGeneratorLength(value);
+    }
+
     setOptions(nextOptions);
     refresh(nextOptions);
   }
@@ -152,7 +156,9 @@ export function PasswordGeneratorCard({
               max={48}
               step={1}
               value={[options.length]}
-              onValueChange={(value) => updateOption("length", value[0] ?? 20)}
+              onValueChange={(value) =>
+                updateOption("length", value[0] ?? DEFAULT_GENERATOR_LENGTH)
+              }
             />
           </div>
 
