@@ -598,7 +598,7 @@ function StatusBar({
           className="titlebar-no-drag text-[11px] font-medium normal-case tracking-[0.04em] text-[#9fa7ff] transition-colors hover:text-[#c0c1ff]"
           style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
         >
-          edit by remolg
+          made by remolg
         </button>
       </div>
     </footer>

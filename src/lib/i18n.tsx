@@ -104,7 +104,7 @@ const EN_TRANSLATIONS = {
   "generator.localDescription":
     "Passwords are generated on this device. Similar characters are filtered out automatically: I, l, O, 0.",
   "generator.copy": "Copy",
-  "generator.apply": "Apply to Form",
+  "generator.apply": "Add to Entry",
   "settings.badge": "Vault Settings",
   "settings.title": "Settings",
   "settings.description":
@@ -257,7 +257,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "generator.localDescription":
     "Şifreler bu cihazda üretilir. Benzer karakterler otomatik olarak ayıklanır: I, l, O, 0.",
   "generator.copy": "Kopyala",
-  "generator.apply": "Forma Aktar",
+  "generator.apply": "Kayda Ekle",
   "settings.badge": "Kasa Ayarları",
   "settings.title": "Ayarlar",
   "settings.description":
