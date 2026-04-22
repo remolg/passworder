@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 
-import { EditEntryDialog } from "@/components/edit-entry-dialog";
+import { EntryDetailView } from "@/components/entry-detail-view";
 import { PasswordGeneratorCard } from "@/components/password-generator-card";
 import { PasswordList } from "@/components/password-list";
 import { QuickAddForm } from "@/components/quick-add-form";
@@ -102,9 +102,27 @@ function AppContent({
     DEFAULT_QUICK_ADD_VALUES,
   );
   const [searchTerm, setSearchTerm] = useState("");
-  const [editingEntry, setEditingEntry] = useState<VaultEntry | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<VaultEntry | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("passwords");
   const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (!selectedEntry) {
+      return;
+    }
+
+    const nextSelected =
+      controller.payload?.entries.find((entry) => entry.id === selectedEntry.id) ?? null;
+
+    if (!nextSelected) {
+      setSelectedEntry(null);
+      return;
+    }
+
+    if (nextSelected !== selectedEntry) {
+      setSelectedEntry(nextSelected);
+    }
+  }, [controller.payload?.entries, selectedEntry]);
 
   useEffect(() => {
     if (!controller.notice && !controller.error) {
@@ -205,6 +223,7 @@ function AppContent({
 
     await controller.deleteEntry(entry.id);
     autoLock.touch();
+    setSelectedEntry((current) => (current?.id === entry.id ? null : current));
   }
 
   async function handleSaveEdit(values: EntryFormValues) {
@@ -214,7 +233,22 @@ function AppContent({
     }
 
     autoLock.touch();
-    setEditingEntry(null);
+    setSelectedEntry((current) =>
+      current
+        ? {
+            ...current,
+            service: values.service.trim(),
+            username: values.username.trim(),
+            password: values.password,
+            url: values.url.trim(),
+            notes: values.notes.trim(),
+            tags: values.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean),
+          }
+        : current,
+    );
   }
 
   async function handleSettingsChange(nextSettings: VaultSettings) {
@@ -262,7 +296,7 @@ function AppContent({
   async function handleManualLock() {
     await controller.lockVault(true);
     setActiveSection("passwords");
-    setEditingEntry(null);
+    setSelectedEntry(null);
   }
 
   return (
@@ -361,16 +395,33 @@ function AppContent({
 
             <div className="h-full min-h-0 overflow-hidden">
               {activeSection === "passwords" ? (
-                <PasswordList
-                  entries={filteredEntries}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  onEdit={setEditingEntry}
-                  onDelete={handleDelete}
-                  onCopyUsername={(entry) => handleCopy(entry.username)}
-                  onCopyPassword={(entry) => handleCopy(entry.password)}
-                  onCreateNew={() => setActiveSection("quick-add")}
-                />
+                selectedEntry ? (
+                  <EntryDetailView
+                    entry={selectedEntry}
+                    busy={controller.busy}
+                    onBack={() => setSelectedEntry(null)}
+                    onCopyPassword={handleCopy}
+                    onDelete={handleDelete}
+                    onSave={handleSaveEdit}
+                    onGeneratePassword={(apply) => {
+                      const password = generatePassword(defaultGeneratorOptions());
+                      apply(password);
+                    }}
+                  />
+                ) : (
+                  <PasswordList
+                    entries={filteredEntries}
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    onOpenDetails={setSelectedEntry}
+                    onCopyUsername={(entry) => handleCopy(entry.username)}
+                    onCopyPassword={(entry) => handleCopy(entry.password)}
+                    onCreateNew={() => {
+                      setSelectedEntry(null);
+                      setActiveSection("quick-add");
+                    }}
+                  />
+                )
               ) : null}
 
               {activeSection === "quick-add" ? (
@@ -409,19 +460,6 @@ function AppContent({
           </div>
         </div>
       </WindowShell>
-
-      <EditEntryDialog
-        entry={editingEntry}
-        open={Boolean(editingEntry)}
-        busy={controller.busy}
-        onClose={() => setEditingEntry(null)}
-        onCopyPassword={handleCopy}
-        onSave={handleSaveEdit}
-        onGeneratePassword={(apply) => {
-          const password = generatePassword(defaultGeneratorOptions());
-          apply(password);
-        }}
-      />
     </>
   );
 }

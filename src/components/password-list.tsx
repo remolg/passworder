@@ -1,15 +1,4 @@
-import { type ReactNode, useState } from "react";
-import {
-  Check,
-  Eye,
-  EyeOff,
-  KeyRound,
-  PencilLine,
-  Plus,
-  Search,
-  Trash2,
-  UserRound,
-} from "lucide-react";
+import { Check, KeyRound, Plus, Search, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +11,7 @@ interface PasswordListProps {
   entries: VaultEntry[];
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  onEdit: (entry: VaultEntry) => void;
-  onDelete: (entry: VaultEntry) => void;
+  onOpenDetails: (entry: VaultEntry) => void;
   onCopyUsername: (entry: VaultEntry) => Promise<boolean>;
   onCopyPassword: (entry: VaultEntry) => Promise<boolean>;
   onCreateNew: () => void;
@@ -33,24 +21,14 @@ export function PasswordList({
   entries,
   searchTerm,
   onSearchChange,
-  onEdit,
-  onDelete,
+  onOpenDetails,
   onCopyUsername,
   onCopyPassword,
   onCreateNew,
 }: PasswordListProps) {
   const { language, t } = useI18n();
-  const [revealedIds, setRevealedIds] = useState<string[]>([]);
   const copyFeedback = useCopyFeedback();
   const compactTitle = language === "tr" ? "Kasa" : "Vault";
-
-  function toggleReveal(id: string) {
-    setRevealedIds((current) =>
-      current.includes(id)
-        ? current.filter((currentId) => currentId !== id)
-        : [...current, id],
-    );
-  }
 
   async function handleCopy(
     key: string,
@@ -108,55 +86,63 @@ export function PasswordList({
         ) : (
           <div className="divide-y divide-white/[0.05]">
             {entries.map((entry) => {
-              const revealed = revealedIds.includes(entry.id);
               const usernameCopied = copyFeedback.isCopied(`username:${entry.id}`);
               const passwordCopied = copyFeedback.isCopied(`password:${entry.id}`);
 
               return (
                 <article key={entry.id} className="py-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.03] text-[12px] font-semibold text-primary">
+                    <button
+                      type="button"
+                      onClick={() => onOpenDetails(entry)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.03] text-[12px] font-semibold text-primary transition-colors hover:bg-white/[0.06]"
+                      aria-label={`${entry.service} details`}
+                    >
                       {getInitials(entry.service)}
-                    </div>
+                    </button>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="truncate text-[14px] font-medium text-foreground">
-                            {entry.service}
-                          </h3>
                           <button
                             type="button"
-                           onClick={() =>
-                             void handleCopy(`username:${entry.id}`, onCopyUsername, entry)
-                           }
-                           className={cn(
-                             "mt-1 flex items-center gap-1.5 text-[12px] transition-colors",
-                            usernameCopied
-                              ? "text-primary"
-                              : "text-muted-foreground hover:text-foreground",
-                          )}
-                          title={t("passwords.copyUsername")}
-                        >
-                          {usernameCopied ? (
-                            <Check className="h-3.5 w-3.5 shrink-0" />
-                          ) : (
-                            <UserRound className="h-3.5 w-3.5 shrink-0" />
-                          )}
-                          <span className="truncate">
-                            {entry.username || t("passwords.noUsername")}
-                          </span>
-                          <span
+                            onClick={() => onOpenDetails(entry)}
+                            className="truncate text-left text-[14px] font-medium text-foreground transition-colors hover:text-primary"
+                          >
+                            {entry.service}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleCopy(`username:${entry.id}`, onCopyUsername, entry)
+                            }
                             className={cn(
-                              "h-1.5 w-1.5 shrink-0 rounded-full bg-primary transition-all duration-200",
+                              "mt-1 flex items-center gap-1.5 text-[12px] transition-colors",
                               usernameCopied
-                                ? "scale-100 opacity-100"
-                                : "scale-50 opacity-0",
+                                ? "text-primary"
+                                : "text-muted-foreground hover:text-foreground",
                             )}
-                          />
+                            title={t("passwords.copyUsername")}
+                          >
+                            {usernameCopied ? (
+                              <Check className="h-3.5 w-3.5 shrink-0" />
+                            ) : (
+                              <UserRound className="h-3.5 w-3.5 shrink-0" />
+                            )}
+                            <span className="truncate">
+                              {entry.username || t("passwords.noUsername")}
+                            </span>
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 shrink-0 rounded-full bg-primary transition-all duration-200",
+                                usernameCopied
+                                  ? "scale-100 opacity-100"
+                                  : "scale-50 opacity-0",
+                              )}
+                            />
                           </button>
                         </div>
-
                       </div>
 
                       <button
@@ -166,11 +152,7 @@ export function PasswordList({
                         }
                         className={cn(
                           "code-text mt-3 flex items-center gap-2 break-all text-left text-[11px] tracking-[0.12em] transition-colors hover:text-foreground",
-                          passwordCopied
-                            ? "text-primary"
-                            : revealed
-                              ? "text-primary"
-                              : "text-muted-foreground",
+                          passwordCopied ? "text-primary" : "text-muted-foreground",
                         )}
                         title={t("passwords.copyPassword")}
                       >
@@ -179,7 +161,7 @@ export function PasswordList({
                         ) : (
                           <KeyRound className="h-3.5 w-3.5 shrink-0" />
                         )}
-                        {revealed ? entry.password : maskValue(entry.password)}
+                        {maskValue(entry.password)}
                         <span
                           className={cn(
                             "h-1.5 w-1.5 shrink-0 self-center rounded-full bg-primary transition-all duration-200",
@@ -187,36 +169,6 @@ export function PasswordList({
                           )}
                         />
                       </button>
-
-                      <div className="mt-3 flex items-center justify-end gap-1 border-t border-white/[0.04] pt-2">
-                        <ActionIconButton
-                          label={
-                            revealed
-                              ? t("passwords.hidePassword")
-                              : t("passwords.showPassword")
-                          }
-                          onClick={() => toggleReveal(entry.id)}
-                        >
-                          {revealed ? (
-                            <EyeOff className="h-3.5 w-3.5" />
-                          ) : (
-                            <Eye className="h-3.5 w-3.5" />
-                          )}
-                        </ActionIconButton>
-                        <ActionIconButton
-                          label={t("passwords.editEntry")}
-                          onClick={() => onEdit(entry)}
-                        >
-                          <PencilLine className="h-3.5 w-3.5" />
-                        </ActionIconButton>
-                        <ActionIconButton
-                          label={t("passwords.deleteEntry")}
-                          danger
-                          onClick={() => onDelete(entry)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </ActionIconButton>
-                      </div>
                     </div>
                   </div>
                 </article>
@@ -226,33 +178,6 @@ export function PasswordList({
         )}
       </div>
     </section>
-  );
-}
-
-function ActionIconButton({
-  children,
-  danger,
-  label,
-  onClick,
-}: {
-  children: ReactNode;
-  danger?: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground",
-        danger && "hover:text-destructive",
-      )}
-      aria-label={label}
-      title={label}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -272,8 +197,8 @@ function getInitials(service: string) {
 
 function maskValue(value: string) {
   if (!value) {
-    return "••••••••";
+    return "\u2022".repeat(8);
   }
 
-  return "•".repeat(Math.max(value.length, 8));
+  return "\u2022".repeat(Math.max(value.length, 8));
 }
