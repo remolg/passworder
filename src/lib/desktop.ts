@@ -12,9 +12,7 @@ export function isDesktopRuntime() {
 
 function getDesktopApi(): DesktopVaultApi {
   if (!window.passworder) {
-    throw new Error(
-      "Electron çalışma zamanı bulunamadı. Uygulamayı masaüstü olarak `npm run dev` ile başlatın.",
-    );
+    throw new Error("errors.runtimeMissing");
   }
 
   return window.passworder;
@@ -44,5 +42,22 @@ export const vaultApi = {
   },
   async copyToClipboard(value: string, clearAfterSeconds: number) {
     return getDesktopApi().copyToClipboard(value, clearAfterSeconds);
+  },
+};
+
+export const appWindow = {
+  async minimize() {
+    if (!window.passworder) {
+      return;
+    }
+
+    await getDesktopApi().minimizeWindow();
+  },
+  async close() {
+    if (!window.passworder) {
+      return;
+    }
+
+    await getDesktopApi().closeWindow();
   },
 };

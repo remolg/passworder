@@ -3,49 +3,28 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 20% 98%;
-  --foreground: 222 30% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 30% 11%;
-  --primary: 215 27% 22%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 18% 95%;
-  --secondary-foreground: 222 30% 16%;
-  --muted: 210 18% 95%;
-  --muted-foreground: 215 15% 43%;
-  --accent: 212 24% 92%;
-  --accent-foreground: 222 30% 16%;
-  --destructive: 0 67% 45%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 213 22% 86%;
-  --input: 213 22% 86%;
-  --ring: 215 27% 22%;
-  --radius: 16px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222 26% 10%;
-    --foreground: 210 40% 96%;
-    --card: 222 22% 13%;
-    --card-foreground: 210 40% 96%;
-    --primary: 210 40% 96%;
-    --primary-foreground: 222 30% 12%;
-    --secondary: 222 18% 18%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 222 18% 18%;
-    --muted-foreground: 214 18% 72%;
-    --accent: 222 18% 20%;
-    --accent-foreground: 210 40% 96%;
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 223 16% 24%;
-    --input: 223 16% 24%;
-    --ring: 210 40% 96%;
-  }
+  --background: 224 39% 12%;
+  --foreground: 225 33% 95%;
+  --card: 223 34% 15%;
+  --card-foreground: 225 33% 95%;
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 223 28% 19%;
+  --secondary-foreground: 225 24% 90%;
+  --muted: 223 23% 20%;
+  --muted-foreground: 226 16% 71%;
+  --accent: 223 30% 18%;
+  --accent-foreground: 225 33% 95%;
+  --destructive: 0 70% 68%;
+  --destructive-foreground: 225 33% 95%;
+  --border: 223 21% 24%;
+  --input: 223 21% 24%;
+  --ring: 239 84% 67%;
+  --radius: 10px;
 }
 
 * {
+  box-sizing: border-box;
   @apply border-border;
 }
 
@@ -53,22 +32,41 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
 }
 
 body {
   @apply bg-background text-foreground antialiased;
-  font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  background-image:
-    radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.92));
+  font-family: Inter, "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.16), transparent 34%),
+    linear-gradient(180deg, #10182b 0%, #0b1220 100%);
+  overflow: hidden;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-image:
-      radial-gradient(circle at top left, rgba(148, 163, 184, 0.12), transparent 26%),
-      linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.96));
-  }
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.32);
+  color: hsl(var(--foreground));
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(160, 163, 255, 0.24);
+  border-radius: 999px;
 }
 
 @layer base {
@@ -82,6 +80,24 @@ body {
 
 @layer utilities {
   .panel-surface {
-    @apply bg-card/90 border border-border/80 shadow-soft backdrop-blur;
+    @apply bg-white/[0.02] shadow-[0_10px_30px_rgba(3,8,20,0.14)] backdrop-blur-md;
+  }
+
+  .titlebar-drag {
+    -webkit-app-region: drag;
+  }
+
+  .titlebar-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  .mono-label {
+    font-family: "Space Grotesk", Inter, "Segoe UI", sans-serif;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .code-text {
+    font-family: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
   }
 }

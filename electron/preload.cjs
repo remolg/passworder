@@ -11,4 +11,6 @@ contextBridge.exposeInMainWorld("passworder", {
   updateSettings: (settings) => ipcRenderer.invoke("vault:update-settings", settings),
   copyToClipboard: (value, clearAfterSeconds) =>
     ipcRenderer.invoke("vault:copy-to-clipboard", value, clearAfterSeconds),
+  minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
+  closeWindow: () => ipcRenderer.invoke("window:close"),
 });

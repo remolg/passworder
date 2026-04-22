@@ -52,7 +52,7 @@ const config: Config = {
         sans: ["Segoe UI", "SF Pro Text", "Helvetica Neue", "Arial", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 18px 40px -24px rgba(15, 23, 42, 0.32)",
+        soft: "0 10px 28px -18px rgba(154, 166, 178, 0.42)",
       },
     },
   },

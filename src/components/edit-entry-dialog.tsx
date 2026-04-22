@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useI18n } from "@/lib/i18n";
 import { EntryFormValues, VaultEntry } from "@/types/vault";
 
 interface EditEntryDialogProps {
@@ -17,6 +18,7 @@ interface EditEntryDialogProps {
   open: boolean;
   busy: boolean;
   onClose: () => void;
+  onCopyPassword?: (value: string) => Promise<boolean>;
   onSave: (values: EntryFormValues) => void;
   onGeneratePassword: (apply: (password: string) => void) => void;
 }
@@ -26,9 +28,11 @@ export function EditEntryDialog({
   open,
   busy,
   onClose,
+  onCopyPassword,
   onSave,
   onGeneratePassword,
 }: EditEntryDialogProps) {
+  const { t } = useI18n();
   const [values, setValues] = useState<EntryFormValues>(emptyValues());
 
   useEffect(() => {
@@ -50,38 +54,43 @@ export function EditEntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : null)}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Kaydı Düzenle</DialogTitle>
-          <DialogDescription>
-            Mevcut kaydı güncelleyin. Değişiklikler lokal kasaya yeniden şifrelenerek yazılır.
+      <DialogContent className="gap-0 p-0">
+        <DialogHeader className="px-5 py-5 pr-12">
+          <DialogTitle className="text-[15px] font-semibold text-foreground">
+            {t("edit.title")}
+          </DialogTitle>
+          <DialogDescription className="text-[12px] leading-6 text-muted-foreground">
+            {t("edit.description")}
           </DialogDescription>
         </DialogHeader>
 
-        <EntryFormFields
-          values={values}
-          onChange={(field, value) =>
-            setValues((current) => ({
-              ...current,
-              [field]: value,
-            }))
-          }
-          onGeneratePassword={() =>
-            onGeneratePassword((password) =>
+        <div className="max-h-[58vh] overflow-y-auto border-t border-white/[0.05] px-5 py-5">
+          <EntryFormFields
+            values={values}
+            onChange={(field, value) =>
               setValues((current) => ({
                 ...current,
-                password,
-              })),
-            )
-          }
-        />
+                [field]: value,
+              }))
+            }
+            onCopyPassword={onCopyPassword}
+            onGeneratePassword={() =>
+              onGeneratePassword((password) =>
+                setValues((current) => ({
+                  ...current,
+                  password,
+                })),
+              )
+            }
+          />
+        </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Vazgeç
+        <DialogFooter className="border-t border-white/[0.05] px-5 py-4">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t("common.cancel")}
           </Button>
           <Button type="button" onClick={() => onSave(values)} disabled={busy}>
-            Değişiklikleri Kaydet
+            {t("edit.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

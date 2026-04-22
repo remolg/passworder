@@ -1,6 +1,9 @@
+export type AppLanguage = "en" | "tr";
+
 export interface VaultSettings {
   autoLockMinutes: number;
   clipboardClearSeconds: number;
+  language: AppLanguage;
 }
 
 export interface VaultEntry {

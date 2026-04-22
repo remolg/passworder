@@ -14,6 +14,8 @@ export interface DesktopVaultApi {
   deleteEntry: (id: string) => Promise<VaultPayload>;
   updateSettings: (settings: VaultSettings) => Promise<VaultPayload>;
   copyToClipboard: (value: string, clearAfterSeconds: number) => Promise<void>;
+  minimizeWindow: () => Promise<void>;
+  closeWindow: () => Promise<void>;
 }
 
 declare global {

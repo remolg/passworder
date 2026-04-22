@@ -12,14 +12,20 @@ function getVaultStoragePath() {
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 820,
-    minWidth: 1000,
-    minHeight: 720,
+    width: 360,
+    height: 650,
+    minWidth: 360,
+    minHeight: 650,
+    maxWidth: 360,
+    maxHeight: 650,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#000000",
     title: "Passworder",
+    frame: false,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -73,6 +79,12 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:copy-to-clipboard", async (_event, value, clearAfterSeconds) =>
     vaultService.copyToClipboard(value, clearAfterSeconds),
   );
+  ipcMain.handle("window:minimize", async () => {
+    mainWindow?.minimize();
+  });
+  ipcMain.handle("window:close", async () => {
+    mainWindow?.close();
+  });
 }
 
 app.whenReady().then(() => {

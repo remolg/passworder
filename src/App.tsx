@@ -1,5 +1,16 @@
-import { useEffect, useState } from "react";
-import { Lock, Shield } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import {
+  type LucideIcon,
+  KeyRound,
+  List,
+  LockKeyhole,
+  Menu,
+  Minus,
+  Settings2,
+  Shield,
+  Sparkles,
+  X,
+} from "lucide-react";
 
 import { EditEntryDialog } from "@/components/edit-entry-dialog";
 import { PasswordGeneratorCard } from "@/components/password-generator-card";
@@ -7,12 +18,20 @@ import { PasswordList } from "@/components/password-list";
 import { QuickAddForm } from "@/components/quick-add-form";
 import { UnlockScreen } from "@/components/unlock-screen";
 import { VaultSettingsCard } from "@/components/vault-settings-card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useVaultController } from "@/hooks/use-vault-controller";
-import { generatePassword } from "@/lib/password-generator";
+import { appWindow } from "@/lib/desktop";
 import {
+  getStoredLanguage,
+  I18nProvider,
+  persistLanguage,
+  type TranslationKey,
+  useI18n,
+} from "@/lib/i18n";
+import { generatePassword } from "@/lib/password-generator";
+import { cn } from "@/lib/utils";
+import {
+  AppLanguage,
   EntryFormValues,
   EntryMutationInput,
   PasswordGeneratorOptions,
@@ -29,13 +48,62 @@ const DEFAULT_QUICK_ADD_VALUES: EntryFormValues = {
   tags: "",
 };
 
+type SectionId = "passwords" | "quick-add" | "generator" | "settings";
+
+const NAV_ITEMS: Array<{
+  id: SectionId;
+  labelKey: TranslationKey;
+  icon: LucideIcon;
+}> = [
+  { id: "passwords", labelKey: "nav.passwords", icon: List },
+  { id: "quick-add", labelKey: "nav.quickAdd", icon: KeyRound },
+  { id: "generator", labelKey: "nav.generator", icon: Sparkles },
+  { id: "settings", labelKey: "nav.settings", icon: Settings2 },
+];
+
 export default function App() {
   const controller = useVaultController();
+  const [language, setLanguage] = useState<AppLanguage>(() => getStoredLanguage());
+
+  useEffect(() => {
+    const payloadLanguage = controller.payload?.settings.language;
+    if (payloadLanguage && payloadLanguage !== language) {
+      setLanguage(payloadLanguage);
+    }
+  }, [controller.payload?.settings.language, language]);
+
+  useEffect(() => {
+    persistLanguage(language);
+  }, [language]);
+
+  return (
+    <I18nProvider language={language}>
+      <AppContent
+        controller={controller}
+        language={language}
+        onLanguageChange={setLanguage}
+      />
+    </I18nProvider>
+  );
+}
+
+function AppContent({
+  controller,
+  language,
+  onLanguageChange,
+}: {
+  controller: ReturnType<typeof useVaultController>;
+  language: AppLanguage;
+  onLanguageChange: (language: AppLanguage) => void;
+}) {
+  const { t, resolveText } = useI18n();
   const [quickAddValues, setQuickAddValues] = useState<EntryFormValues>(
     DEFAULT_QUICK_ADD_VALUES,
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [editingEntry, setEditingEntry] = useState<VaultEntry | null>(null);
+  const [activeSection, setActiveSection] = useState<SectionId>("passwords");
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
     if (!controller.notice && !controller.error) {
@@ -49,7 +117,7 @@ export default function App() {
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [controller.notice, controller.error]);
+  }, [controller.notice, controller.error, controller]);
 
   const autoLock = useAutoLock({
     enabled: Boolean(controller.payload),
@@ -61,32 +129,58 @@ export default function App() {
 
   if (controller.loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-6">
-        <div className="panel-surface rounded-2xl px-6 py-5 text-sm text-muted-foreground">
-          Kasa durumu hazırlanıyor...
+      <WindowShell
+        footer={
+          <StatusBar
+            locked
+            defaultAutoLockMinutes={controller.status.defaultAutoLockMinutes}
+          />
+        }
+      >
+        <div className="flex flex-1 items-center justify-center px-8">
+          <div className="w-full max-w-[250px] text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/[0.04] text-primary">
+              <Shield className="h-6 w-6" />
+            </div>
+            <p className="mt-5 text-sm font-semibold text-foreground">
+              {t("loading.title")}
+            </p>
+            <p className="mt-2 text-xs leading-6 text-muted-foreground">
+              {t("loading.description")}
+            </p>
+          </div>
         </div>
-      </main>
+      </WindowShell>
     );
   }
 
   if (!controller.status.vaultExists || !controller.payload) {
     return (
-      <UnlockScreen
-        hasVault={controller.status.vaultExists}
-        busy={controller.busy}
-        error={controller.error}
-        runtimeMissing={controller.runtimeMissing}
-        storagePath={controller.status.storagePath}
-        onCreateVault={controller.initializeVault}
-        onUnlockVault={controller.unlockVault}
-      />
+      <WindowShell
+        footer={
+          <StatusBar
+            locked
+            defaultAutoLockMinutes={controller.status.defaultAutoLockMinutes}
+          />
+        }
+      >
+        <UnlockScreen
+          hasVault={controller.status.vaultExists}
+          busy={controller.busy}
+          error={controller.error}
+          runtimeMissing={controller.runtimeMissing}
+          storagePath={controller.status.storagePath}
+          onCreateVault={controller.initializeVault}
+          onUnlockVault={controller.unlockVault}
+        />
+      </WindowShell>
     );
   }
 
   const filteredEntries = controller.payload.entries
     .slice()
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .filter((entry) => matchesSearch(entry, searchTerm));
+    .filter((entry) => matchesSearch(entry, searchTerm, language));
 
   async function handleQuickAddSubmit() {
     const success = await controller.saveEntry(toMutationInput(quickAddValues));
@@ -96,11 +190,12 @@ export default function App() {
 
     autoLock.touch();
     setQuickAddValues(DEFAULT_QUICK_ADD_VALUES);
+    setActiveSection("passwords");
   }
 
   async function handleDelete(entry: VaultEntry) {
     const confirmed = window.confirm(
-      `${entry.service} kaydını silmek istediğinize emin misiniz?`,
+      t("dialog.deleteEntryConfirm", { service: entry.service }),
     );
 
     if (!confirmed) {
@@ -122,7 +217,18 @@ export default function App() {
   }
 
   async function handleSettingsChange(nextSettings: VaultSettings) {
-    await controller.updateSettings(nextSettings);
+    const previousLanguage = language;
+
+    if (nextSettings.language !== language) {
+      onLanguageChange(nextSettings.language);
+    }
+
+    const success = await controller.updateSettings(nextSettings);
+    if (!success && nextSettings.language !== previousLanguage) {
+      onLanguageChange(previousLanguage);
+      return;
+    }
+
     autoLock.touch();
   }
 
@@ -131,6 +237,7 @@ export default function App() {
       ...current,
       password,
     }));
+    setActiveSection("quick-add");
   }
 
   function generateInlinePassword() {
@@ -140,107 +247,175 @@ export default function App() {
 
   async function handleCopy(value: string) {
     if (!value) {
-      return;
+      return false;
     }
 
-    await controller.copyToClipboard(value);
-    autoLock.touch();
+    const success = await controller.copyToClipboard(value);
+    if (success) {
+      autoLock.touch();
+    }
+
+    return success;
+  }
+
+  async function handleManualLock() {
+    await controller.lockVault(true);
+    setActiveSection("passwords");
+    setEditingEntry(null);
   }
 
   return (
     <>
-      <main className="min-h-screen px-4 py-4 sm:px-6">
-        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1240px] flex-col gap-4 rounded-[28px] border border-border/60 bg-background/70 p-4 shadow-soft backdrop-blur">
-          <header className="panel-surface rounded-2xl p-4 sm:p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-                    <Shield className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-semibold">Passworder</h1>
-                    <p className="text-sm text-muted-foreground">
-                      Lokal kasa, offline-first masaüstü şifre yöneticisi
-                    </p>
-                  </div>
-                </div>
+      <WindowShell
+        leftSlot={
+          <button
+            type="button"
+            onClick={() => setNavOpen((current) => !current)}
+            className="titlebar-no-drag flex h-7 w-7 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+            aria-label={t("window.openMenu")}
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        }
+        topSlot={
+          <button
+            type="button"
+            onClick={() => void handleManualLock()}
+            className="titlebar-no-drag flex h-7 w-7 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+            aria-label={t("window.lockVault")}
+          >
+            <LockKeyhole className="h-4 w-4" />
+          </button>
+        }
+        footer={
+          <StatusBar
+            entryCount={controller.payload.entries.length}
+            settings={controller.payload.settings}
+          />
+        }
+      >
+        {controller.notice || controller.error ? (
+          <StatusBanner
+            tone={controller.error ? "error" : "notice"}
+            message={resolveText(controller.error ?? controller.notice ?? "")}
+          />
+        ) : null}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge>Scrypt</Badge>
-                  <Badge>AES-256-GCM</Badge>
-                  <Badge variant="secondary">Lokal depolama</Badge>
-                </div>
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            {navOpen ? (
+              <button
+                type="button"
+                aria-label={t("window.closeMenu")}
+                className="absolute inset-0 z-20 bg-slate-950/24"
+                onClick={() => setNavOpen(false)}
+              />
+            ) : null}
+
+            <aside
+              className={cn(
+                "absolute inset-y-0 left-0 z-30 flex w-[84px] flex-col border-r border-white/[0.05] bg-[#0c1528]/92 px-2 py-3 backdrop-blur-md transition-transform duration-150",
+                navOpen ? "translate-x-0" : "-translate-x-full",
+              )}
+            >
+              <div className="space-y-1">
+                {NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => {
+                  const active = activeSection === id;
+
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setActiveSection(id);
+                        setNavOpen(false);
+                      }}
+                      className={cn(
+                        "group relative flex w-full flex-col items-center justify-center gap-2 rounded-[12px] px-2 py-3 text-center transition-colors",
+                        active
+                          ? "bg-white/[0.04] text-primary"
+                          : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
+                      )}
+                    >
+                      {active ? (
+                        <span className="absolute inset-y-2 left-0 w-[2px] rounded-full bg-primary" />
+                      ) : null}
+                      <Icon className="h-4 w-4" />
+                      <span className="mono-label text-[8px] tracking-[0.14em]">
+                        {t(labelKey)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                {controller.notice ? (
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
-                    {controller.notice}
-                  </div>
-                ) : null}
-                {controller.error ? (
-                  <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                    {controller.error}
-                  </div>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => controller.lockVault()}
-                >
-                  <Lock className="h-4 w-4" />
-                  Kasayı Kilitle
-                </Button>
+              <div className="mt-auto px-2 pb-1 pt-4">
+                <p className="mono-label text-[8px] text-primary/85">
+                  {t("common.local")}
+                </p>
+                <p className="mt-2 text-[11px] font-medium text-foreground/88">
+                  {t("common.vault")}
+                </p>
               </div>
+            </aside>
+
+            <div className="h-full min-h-0 overflow-hidden">
+              {activeSection === "passwords" ? (
+                <PasswordList
+                  entries={filteredEntries}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  onEdit={setEditingEntry}
+                  onDelete={handleDelete}
+                  onCopyUsername={(entry) => handleCopy(entry.username)}
+                  onCopyPassword={(entry) => handleCopy(entry.password)}
+                  onCreateNew={() => setActiveSection("quick-add")}
+                />
+              ) : null}
+
+              {activeSection === "quick-add" ? (
+                <QuickAddForm
+                  values={quickAddValues}
+                  busy={controller.busy}
+                  onBack={() => setActiveSection("passwords")}
+                  onChange={(field, value) =>
+                    setQuickAddValues((current) => ({
+                      ...current,
+                      [field]: value,
+                    }))
+                  }
+                  onCopyPassword={handleCopy}
+                  onGeneratePassword={generateInlinePassword}
+                  onSubmit={handleQuickAddSubmit}
+                />
+              ) : null}
+
+              {activeSection === "generator" ? (
+                <PasswordGeneratorCard
+                  onApply={applyGeneratedPassword}
+                  onCopy={handleCopy}
+                />
+              ) : null}
+
+              {activeSection === "settings" ? (
+                <VaultSettingsCard
+                  settings={controller.payload.settings}
+                  storagePath={controller.status.storagePath}
+                  onLockNow={handleManualLock}
+                  onChange={handleSettingsChange}
+                />
+              ) : null}
             </div>
-          </header>
-
-          <section className="grid flex-1 gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
-            <div className="grid gap-4">
-              <QuickAddForm
-                values={quickAddValues}
-                busy={controller.busy}
-                onChange={(field, value) =>
-                  setQuickAddValues((current) => ({
-                    ...current,
-                    [field]: value,
-                  }))
-                }
-                onGeneratePassword={generateInlinePassword}
-                onSubmit={handleQuickAddSubmit}
-              />
-
-              <PasswordGeneratorCard
-                onApply={applyGeneratedPassword}
-                onCopy={handleCopy}
-              />
-
-              <VaultSettingsCard
-                settings={controller.payload.settings}
-                storagePath={controller.status.storagePath}
-                onChange={handleSettingsChange}
-              />
-            </div>
-
-            <PasswordList
-              entries={filteredEntries}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              onEdit={setEditingEntry}
-              onDelete={handleDelete}
-              onCopyUsername={(entry) => handleCopy(entry.username)}
-              onCopyPassword={(entry) => handleCopy(entry.password)}
-            />
-          </section>
+          </div>
         </div>
-      </main>
+      </WindowShell>
 
       <EditEntryDialog
         entry={editingEntry}
         open={Boolean(editingEntry)}
         busy={controller.busy}
         onClose={() => setEditingEntry(null)}
+        onCopyPassword={handleCopy}
         onSave={handleSaveEdit}
         onGeneratePassword={(apply) => {
           const password = generatePassword(defaultGeneratorOptions());
@@ -266,8 +441,13 @@ function toMutationInput(values: EntryFormValues): EntryMutationInput {
   };
 }
 
-function matchesSearch(entry: VaultEntry, searchTerm: string) {
-  const query = searchTerm.trim().toLocaleLowerCase("tr-TR");
+function matchesSearch(
+  entry: VaultEntry,
+  searchTerm: string,
+  language: AppLanguage,
+) {
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const query = searchTerm.trim().toLocaleLowerCase(locale);
   if (!query) {
     return true;
   }
@@ -280,7 +460,7 @@ function matchesSearch(entry: VaultEntry, searchTerm: string) {
     ...entry.tags,
   ]
     .join(" ")
-    .toLocaleLowerCase("tr-TR");
+    .toLocaleLowerCase(locale);
 
   return haystack.includes(query);
 }
@@ -293,4 +473,134 @@ function defaultGeneratorOptions(): PasswordGeneratorOptions {
     numbers: true,
     symbols: true,
   };
+}
+
+function WindowShell({
+  children,
+  footer,
+  leftSlot,
+  topSlot,
+}: {
+  children: ReactNode;
+  footer?: ReactNode;
+  leftSlot?: ReactNode;
+  topSlot?: ReactNode;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <main className="relative flex h-screen w-screen flex-col overflow-hidden border border-white/[0.05] bg-background text-foreground">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.16),transparent_58%)]" />
+
+      <header className="titlebar-drag relative z-10 flex h-10 items-center justify-between border-b border-white/[0.05] bg-[#0f172a]/88 px-3 backdrop-blur-md">
+        <div className="flex min-w-0 items-center gap-3">
+          {leftSlot}
+          <div className="titlebar-no-drag flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.03] text-primary">
+            <Shield className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="mono-label truncate text-[10px] font-black text-primary">
+              Passworder
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          {topSlot}
+          <WindowControlButton
+            label={t("window.minimize")}
+            onClick={() => void appWindow.minimize()}
+          >
+            <Minus className="h-4 w-4" />
+          </WindowControlButton>
+          <WindowControlButton
+            label={t("window.close")}
+            onClick={() => void appWindow.close()}
+          >
+            <X className="h-4 w-4" />
+          </WindowControlButton>
+        </div>
+      </header>
+
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">{children}</div>
+      {footer}
+    </main>
+  );
+}
+
+function WindowControlButton({
+  children,
+  label,
+  onClick,
+}: {
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="titlebar-no-drag flex h-7 w-7 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+      aria-label={label}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StatusBanner({
+  message,
+  tone,
+}: {
+  message: string;
+  tone: "notice" | "error";
+}) {
+  return (
+    <div
+      className={cn(
+        "mx-4 mt-4 px-4 py-2 text-[12px] leading-5",
+        tone === "error" ? "text-destructive" : "text-primary",
+      )}
+    >
+      {message}
+    </div>
+  );
+}
+
+function StatusBar({
+  defaultAutoLockMinutes,
+  entryCount,
+  locked,
+  settings,
+}: {
+  defaultAutoLockMinutes?: number;
+  entryCount?: number;
+  locked?: boolean;
+  settings?: VaultSettings;
+}) {
+  const { t } = useI18n();
+  const autoLockMinutes = settings?.autoLockMinutes ?? defaultAutoLockMinutes ?? 5;
+  const clipboardSeconds = settings?.clipboardClearSeconds ?? 30;
+
+  return (
+    <footer className="flex h-8 items-center justify-between border-t border-white/[0.05] bg-[#0d1425]/72 px-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="flex min-w-0 items-center gap-2 truncate">
+        <span className="h-2 w-2 rounded-full bg-primary" />
+        <span className="truncate">
+          {locked
+            ? t("status.lockedVault")
+            : t("common.itemsCount", { count: entryCount ?? 0 })}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <span>AES-256</span>
+        <span>{t("common.minutesShort", { count: autoLockMinutes })}</span>
+        {!locked ? (
+          <span>{t("common.secondsShort", { count: clipboardSeconds })}</span>
+        ) : null}
+      </div>
+    </footer>
+  );
 }

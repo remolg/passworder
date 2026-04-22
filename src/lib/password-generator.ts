@@ -24,11 +24,11 @@ export function generatePassword(options: PasswordGeneratorOptions) {
   ].filter(Boolean);
 
   if (groups.length === 0) {
-    throw new Error("En az bir karakter grubu seçmelisiniz.");
+    throw new Error("errors.passwordGroupRequired");
   }
 
   if (options.length < groups.length) {
-    throw new Error("Uzunluk, seçilen karakter grubu sayısından küçük olamaz.");
+    throw new Error("errors.passwordLengthTooShort");
   }
 
   const pool = groups.join("");

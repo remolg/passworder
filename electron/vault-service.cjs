@@ -7,6 +7,7 @@ const { clipboard } = require("electron");
 const DEFAULT_SETTINGS = {
   autoLockMinutes: 5,
   clipboardClearSeconds: 30,
+  language: "en",
 };
 
 const VERIFY_TOKEN = Buffer.from("passworder:master-key-check:v1", "utf8");
@@ -19,11 +20,29 @@ function isoNow() {
   return new Date().toISOString();
 }
 
+function normalizeSettings(settings = {}) {
+  return {
+    autoLockMinutes: Math.min(120, Math.max(1, Number(settings.autoLockMinutes) || 5)),
+    clipboardClearSeconds: Math.min(
+      180,
+      Math.max(5, Number(settings.clipboardClearSeconds) || 30),
+    ),
+    language: settings.language === "tr" ? "tr" : "en",
+  };
+}
+
+function normalizePayload(payload) {
+  return {
+    ...payload,
+    settings: normalizeSettings(payload?.settings),
+  };
+}
+
 function createEmptyPayload() {
   const now = isoNow();
   return {
     entries: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: normalizeSettings(DEFAULT_SETTINGS),
     createdAt: now,
     updatedAt: now,
   };
@@ -116,7 +135,7 @@ async function readVaultFile(storagePath) {
 function createSession(key, payload) {
   return {
     key: Buffer.from(key),
-    payload,
+    payload: normalizePayload(payload),
   };
 }
 
@@ -129,7 +148,7 @@ function clearSession() {
 
 function ensureUnlockedSession() {
   if (!session) {
-    throw new Error("Kasa kilitli.");
+    throw new Error("errors.vaultLocked");
   }
 
   return session;
@@ -141,17 +160,17 @@ function normalizeTags(tags) {
 
 function validateMasterPassword(masterPassword) {
   if (!masterPassword || masterPassword.trim().length < 12) {
-    throw new Error("Master password en az 12 karakter olmalı.");
+    throw new Error("errors.masterPasswordTooShort");
   }
 }
 
 function validateEntryInput(input) {
   if (!input.service?.trim()) {
-    throw new Error("Servis / site alanı boş bırakılamaz.");
+    throw new Error("errors.entryServiceRequired");
   }
 
   if (!input.password) {
-    throw new Error("Şifre alanı boş bırakılamaz.");
+    throw new Error("errors.entryPasswordRequired");
   }
 }
 
@@ -176,6 +195,7 @@ async function persistSession(storagePath) {
   const vaultFile = await readVaultFile(storagePath);
 
   currentSession.payload.updatedAt = isoNow();
+  currentSession.payload.settings = normalizeSettings(currentSession.payload.settings);
   vaultFile.vault = encryptJson(currentSession.key, currentSession.payload);
   vaultFile.updatedAt = currentSession.payload.updatedAt;
 
@@ -204,9 +224,13 @@ async function initializeVault(storagePath, masterPassword) {
 
   try {
     await fs.access(storagePath);
-    throw new Error("Kasa zaten mevcut.");
+    throw new Error("errors.vaultAlreadyExists");
   } catch (error) {
-    if (error && error.message === "Kasa zaten mevcut.") {
+    if (error && error.message === "errors.vaultAlreadyExists") {
+      throw error;
+    }
+
+    if (error && error.code !== "ENOENT") {
       throw error;
     }
   }
@@ -239,14 +263,14 @@ async function unlockVault(storagePath, masterPassword) {
   try {
     const verification = decryptBytes(key, vaultFile.verification);
     if (!crypto.timingSafeEqual(verification, VERIFY_TOKEN)) {
-      throw new Error("Master password doğrulanamadı.");
+      throw new Error("errors.masterPasswordInvalid");
     }
   } catch {
     key.fill(0);
-    throw new Error("Master password doğrulanamadı.");
+    throw new Error("errors.masterPasswordInvalid");
   }
 
-  const payload = decryptJson(key, vaultFile.vault);
+  const payload = normalizePayload(decryptJson(key, vaultFile.vault));
   clearSession();
   session = createSession(key, payload);
   key.fill(0);
@@ -265,7 +289,7 @@ async function saveEntry(storagePath, input) {
   if (input.id) {
     const index = currentSession.payload.entries.findIndex((entry) => entry.id === input.id);
     if (index === -1) {
-      throw new Error("Güncellenecek kayıt bulunamadı.");
+      throw new Error("errors.entryNotFoundUpdate");
     }
 
     currentSession.payload.entries[index] = buildEntry(
@@ -286,7 +310,7 @@ async function deleteEntry(storagePath, id) {
   currentSession.payload.entries = currentSession.payload.entries.filter((entry) => entry.id !== id);
 
   if (currentSession.payload.entries.length === originalLength) {
-    throw new Error("Silinecek kayıt bulunamadı.");
+    throw new Error("errors.entryNotFoundDelete");
   }
 
   await persistSession(storagePath);
@@ -295,13 +319,10 @@ async function deleteEntry(storagePath, id) {
 
 async function updateSettings(storagePath, settings) {
   const currentSession = ensureUnlockedSession();
-  currentSession.payload.settings = {
-    autoLockMinutes: Math.min(120, Math.max(1, Number(settings.autoLockMinutes) || 5)),
-    clipboardClearSeconds: Math.min(
-      180,
-      Math.max(5, Number(settings.clipboardClearSeconds) || 30),
-    ),
-  };
+  currentSession.payload.settings = normalizeSettings({
+    ...currentSession.payload.settings,
+    ...settings,
+  });
 
   await persistSession(storagePath);
   return currentSession.payload;

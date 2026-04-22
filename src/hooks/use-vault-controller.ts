@@ -31,9 +31,7 @@ export function useVaultController() {
         if (active) {
           setRuntimeMissing(true);
           setLoading(false);
-          setError(
-            "Electron çalışma zamanı bulunamadı. Uygulamayı masaüstü olarak `npm run dev` ile başlatın.",
-          );
+          setError("errors.runtimeMissing");
         }
         return;
       }
@@ -64,8 +62,11 @@ export function useVaultController() {
   async function runMutation<T>(
     task: () => Promise<T>,
     successMessage?: string,
+    trackBusy = true,
   ): Promise<T | null> {
-    setBusy(true);
+    if (trackBusy) {
+      setBusy(true);
+    }
     setError(null);
     if (successMessage) {
       setNotice(null);
@@ -81,14 +82,16 @@ export function useVaultController() {
       setError(toErrorMessage(caughtError));
       return null;
     } finally {
-      setBusy(false);
+      if (trackBusy) {
+        setBusy(false);
+      }
     }
   }
 
   async function initializeVault(masterPassword: string) {
     const nextPayload = await runMutation(
       () => vaultApi.initializeVault(masterPassword),
-      "Yeni kasa oluşturuldu.",
+      "notice.vaultCreated",
     );
 
     if (!nextPayload) {
@@ -107,7 +110,7 @@ export function useVaultController() {
   async function unlockVault(masterPassword: string) {
     const nextPayload = await runMutation(
       () => vaultApi.unlockVault(masterPassword),
-      "Kasa açıldı.",
+      "notice.vaultUnlocked",
     );
 
     if (!nextPayload) {
@@ -126,7 +129,7 @@ export function useVaultController() {
   async function lockVault(showMessage = true) {
     const result = await runMutation(
       () => vaultApi.lockVault(),
-      showMessage ? "Kasa kilitlendi." : undefined,
+      showMessage ? "notice.vaultLocked" : undefined,
     );
 
     if (result === null) {
@@ -144,7 +147,7 @@ export function useVaultController() {
   async function saveEntry(input: EntryMutationInput) {
     const nextPayload = await runMutation(
       () => vaultApi.saveEntry(input),
-      input.id ? "Kayıt güncellendi." : "Yeni kayıt eklendi.",
+      input.id ? "notice.entryUpdated" : "notice.entryCreated",
     );
 
     if (!nextPayload) {
@@ -158,7 +161,7 @@ export function useVaultController() {
   async function deleteEntry(id: string) {
     const nextPayload = await runMutation(
       () => vaultApi.deleteEntry(id),
-      "Kayıt silindi.",
+      "notice.entryDeleted",
     );
 
     if (!nextPayload) {
@@ -172,7 +175,7 @@ export function useVaultController() {
   async function updateSettings(settings: VaultSettings) {
     const nextPayload = await runMutation(
       () => vaultApi.updateSettings(settings),
-      "Kasa ayarları kaydedildi.",
+      "notice.settingsSaved",
     );
 
     if (!nextPayload) {
@@ -187,7 +190,8 @@ export function useVaultController() {
     const clearAfterSeconds = payload?.settings.clipboardClearSeconds ?? 30;
     const result = await runMutation(
       () => vaultApi.copyToClipboard(value, clearAfterSeconds),
-      `Pano ${clearAfterSeconds} saniye sonra temizlenecek şekilde güncellendi.`,
+      undefined,
+      false,
     );
 
     return result !== null;
@@ -224,5 +228,5 @@ function toErrorMessage(caughtError: unknown) {
     return caughtError.message;
   }
 
-  return "Beklenmeyen bir hata oluştu.";
+  return "errors.unexpected";
 }
