@@ -157,16 +157,6 @@ export function PasswordList({
                           </button>
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-2">
-                          {entry.tags.slice(0, 2).map((tag) => (
-                            <span
-                              key={tag}
-                              className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
                       </div>
 
                       <button
@@ -197,12 +187,6 @@ export function PasswordList({
                           )}
                         />
                       </button>
-
-                      {entry.url ? (
-                        <p className="mt-2 truncate text-[11px] text-muted-foreground/80">
-                          {entry.url}
-                        </p>
-                      ) : null}
 
                       <div className="mt-3 flex items-center justify-end gap-1 border-t border-white/[0.04] pt-2">
                         <ActionIconButton
