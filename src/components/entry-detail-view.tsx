@@ -13,7 +13,6 @@ interface EntryDetailViewProps {
   onCopyPassword?: (value: string) => Promise<boolean>;
   onDelete: (entry: VaultEntry) => Promise<void> | void;
   onSave: (values: EntryFormValues) => Promise<void> | void;
-  onGeneratePassword: (apply: (password: string) => void) => void;
 }
 
 export function EntryDetailView({
@@ -23,7 +22,6 @@ export function EntryDetailView({
   onCopyPassword,
   onDelete,
   onSave,
-  onGeneratePassword,
 }: EntryDetailViewProps) {
   const { t } = useI18n();
   const [values, setValues] = useState<EntryFormValues>(() => toFormValues(entry));
@@ -66,14 +64,6 @@ export function EntryDetailView({
             }))
           }
           onCopyPassword={onCopyPassword}
-          onGeneratePassword={() =>
-            onGeneratePassword((password) =>
-              setValues((current) => ({
-                ...current,
-                password,
-              })),
-            )
-          }
         />
       </div>
 

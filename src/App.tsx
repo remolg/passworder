@@ -409,10 +409,6 @@ function AppContent({
                     onCopyPassword={handleCopy}
                     onDelete={handleDelete}
                     onSave={handleSaveEdit}
-                    onGeneratePassword={(apply) => {
-                      const password = generatePassword(defaultGeneratorOptions());
-                      apply(password);
-                    }}
                   />
                 ) : (
                   <PasswordList

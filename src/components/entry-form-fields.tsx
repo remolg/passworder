@@ -68,7 +68,7 @@ export function EntryFormFields({
         />
       </FieldGroup>
 
-      <FieldGroup label={t("fields.password")} htmlFor="password">
+      <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <Label
             htmlFor="password"
@@ -144,7 +144,7 @@ export function EntryFormFields({
             {t(strength.labelKey)}
           </span>
         </div>
-      </FieldGroup>
+      </div>
 
       <FieldGroup label={t("fields.notes")} htmlFor="notes">
         <Textarea
