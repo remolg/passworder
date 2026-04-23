@@ -242,8 +242,10 @@ export function PasswordList({
                           void handleCopy(`password:${entry.id}`, onCopyPassword, entry)
                         }
                         className={cn(
-                          "code-text mt-3 flex items-center gap-2 break-all text-left text-[11px] tracking-[0.12em] transition-colors hover:text-foreground",
-                          passwordCopied ? "text-primary" : "text-muted-foreground",
+                          "mt-3 inline-flex max-w-full self-start items-center gap-1.5 text-left text-[12px] transition-colors",
+                          passwordCopied
+                            ? "text-primary"
+                            : "text-muted-foreground hover:text-foreground",
                         )}
                         title={t("passwords.copyPassword")}
                       >
@@ -252,11 +254,15 @@ export function PasswordList({
                         ) : (
                           <KeyRound className="h-3.5 w-3.5 shrink-0" />
                         )}
-                        {maskValue(entry.password)}
+                        <span className="code-text truncate text-[11px] tracking-[0.12em]">
+                          {maskValue(entry.password)}
+                        </span>
                         <span
                           className={cn(
-                            "h-1.5 w-1.5 shrink-0 self-center rounded-full bg-primary transition-all duration-200",
-                            passwordCopied ? "scale-100 opacity-100" : "scale-50 opacity-0",
+                            "h-1.5 w-1.5 shrink-0 rounded-full bg-primary transition-all duration-200",
+                            passwordCopied
+                              ? "scale-100 opacity-100"
+                              : "scale-50 opacity-0",
                           )}
                         />
                       </button>

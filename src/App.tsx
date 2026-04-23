@@ -626,10 +626,10 @@ function StatusBar({
             type="button"
             onClick={() => void appWindow.openExternal("https://gitgit.me/remolg")}
             className={cn(
-              "titlebar-no-drag absolute inset-y-0 right-0 flex items-center justify-end text-[11px] font-medium leading-none normal-case tracking-[0.04em] text-[#9fa7ff] transition-all duration-300 ease-out hover:text-[#c0c1ff] motion-reduce:transition-none",
+              "titlebar-no-drag absolute inset-0 flex items-center justify-end text-[11px] font-medium leading-none normal-case tracking-[0.04em] text-[#9fa7ff] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[#c0c1ff] motion-reduce:transition-none",
               message
-                ? "pointer-events-none translate-x-2 opacity-0"
-                : "translate-x-0 opacity-100",
+                ? "pointer-events-none -translate-y-2 opacity-0"
+                : "translate-y-0 opacity-100",
             )}
             style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
           >
@@ -639,16 +639,16 @@ function StatusBar({
           <span
             aria-live={tone === "error" ? "assertive" : "polite"}
             className={cn(
-              "absolute inset-y-0 right-0 flex max-w-[220px] items-center justify-end truncate text-right text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-300 ease-out motion-reduce:transition-none",
+              "absolute inset-0 flex items-center justify-end text-right text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
               tone === "error" ? "text-destructive" : "text-[#9fa7ff]",
               message
-                ? "translate-x-0 opacity-100"
-                : "pointer-events-none -translate-x-2 opacity-0",
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none translate-y-3 opacity-0",
             )}
             style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
             title={message}
           >
-            {message}
+            <span className="max-w-[220px] truncate">{message}</span>
           </span>
         </div>
       </div>
