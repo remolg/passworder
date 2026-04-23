@@ -13,6 +13,8 @@ const DEFAULT_SETTINGS = {
 const VERIFY_TOKEN = Buffer.from("passworder:master-key-check:v1", "utf8");
 const KEY_LENGTH = 32;
 const NONCE_LENGTH = 12;
+const EXPORT_TYPE = "passworder.entries.export";
+const EXPORT_VERSION = 1;
 
 let session = null;
 
@@ -158,6 +160,20 @@ function normalizeTags(tags) {
   return tags.map((tag) => tag.trim()).filter(Boolean);
 }
 
+function cloneEntry(entry) {
+  return {
+    id: entry.id,
+    service: entry.service,
+    username: entry.username,
+    password: entry.password,
+    url: entry.url,
+    notes: entry.notes,
+    tags: [...entry.tags],
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+  };
+}
+
 function validateMasterPassword(masterPassword) {
   if (!masterPassword || masterPassword.trim().length < 12) {
     throw new Error("errors.masterPasswordTooShort");
@@ -189,6 +205,53 @@ function validateEntryOrder(entryIds, entries) {
       throw new Error("errors.unexpected");
     }
   }
+}
+
+function normalizeImportedEntry(entry) {
+  if (!entry || typeof entry !== "object") {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  const service = typeof entry.service === "string" ? entry.service.trim() : "";
+  const password = typeof entry.password === "string" ? entry.password : "";
+
+  if (!service || !password) {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  const now = isoNow();
+
+  return {
+    id: typeof entry.id === "string" && entry.id ? entry.id : crypto.randomUUID(),
+    service,
+    username: typeof entry.username === "string" ? entry.username.trim() : "",
+    password,
+    url: typeof entry.url === "string" ? entry.url.trim() : "",
+    notes: typeof entry.notes === "string" ? entry.notes.trim() : "",
+    tags: Array.isArray(entry.tags) ? normalizeTags(entry.tags) : [],
+    createdAt: typeof entry.createdAt === "string" ? entry.createdAt : now,
+    updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : now,
+  };
+}
+
+function parseImportFile(fileContent) {
+  let parsed;
+
+  try {
+    parsed = JSON.parse(fileContent);
+  } catch {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  if (
+    parsed?.type !== EXPORT_TYPE ||
+    parsed?.version !== EXPORT_VERSION ||
+    !Array.isArray(parsed?.entries)
+  ) {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  return parsed.entries.map((entry) => normalizeImportedEntry(entry));
 }
 
 function buildEntry(input, existingEntry) {
@@ -321,6 +384,46 @@ async function saveEntry(storagePath, input) {
   return currentSession.payload;
 }
 
+async function exportEntries(storagePath, exportPath) {
+  const currentSession = ensureUnlockedSession();
+  const exportPayload = {
+    type: EXPORT_TYPE,
+    version: EXPORT_VERSION,
+    app: "Passworder",
+    exportedAt: isoNow(),
+    entries: currentSession.payload.entries.map((entry) => cloneEntry(entry)),
+  };
+
+  await fs.writeFile(exportPath, JSON.stringify(exportPayload, null, 2), "utf8");
+}
+
+async function importEntries(storagePath, importPath) {
+  const currentSession = ensureUnlockedSession();
+  const fileContent = await fs.readFile(importPath, "utf8");
+  const importedEntries = parseImportFile(fileContent);
+  const currentEntries = currentSession.payload.entries.slice();
+  const currentIndexById = new Map(
+    currentEntries.map((entry, index) => [entry.id, index]),
+  );
+
+  for (const importedEntry of importedEntries) {
+    const existingIndex = currentIndexById.get(importedEntry.id);
+
+    if (existingIndex === undefined) {
+      currentEntries.push(importedEntry);
+      currentIndexById.set(importedEntry.id, currentEntries.length - 1);
+      continue;
+    }
+
+    currentEntries[existingIndex] = importedEntry;
+  }
+
+  currentSession.payload.entries = currentEntries;
+
+  await persistSession(storagePath);
+  return currentSession.payload;
+}
+
 async function reorderEntries(storagePath, entryIds) {
   const currentSession = ensureUnlockedSession();
   validateEntryOrder(entryIds, currentSession.payload.entries);
@@ -377,6 +480,8 @@ module.exports = {
   unlockVault,
   lockVault,
   saveEntry,
+  exportEntries,
+  importEntries,
   reorderEntries,
   deleteEntry,
   updateSettings,

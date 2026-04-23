@@ -1,6 +1,8 @@
 import {
   AppStatus,
   EntryMutationInput,
+  ExportEntriesResult,
+  ImportEntriesResult,
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
@@ -11,6 +13,8 @@ export interface DesktopVaultApi {
   unlockVault: (masterPassword: string) => Promise<VaultPayload>;
   lockVault: () => Promise<void>;
   saveEntry: (input: EntryMutationInput) => Promise<VaultPayload>;
+  exportEntries: () => Promise<ExportEntriesResult>;
+  importEntries: () => Promise<ImportEntriesResult>;
   reorderEntries: (entryIds: string[]) => Promise<VaultPayload>;
   deleteEntry: (id: string) => Promise<VaultPayload>;
   updateSettings: (settings: VaultSettings) => Promise<VaultPayload>;

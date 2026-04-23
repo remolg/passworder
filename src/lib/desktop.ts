@@ -1,6 +1,8 @@
 import {
   AppStatus,
   EntryMutationInput,
+  ExportEntriesResult,
+  ImportEntriesResult,
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
@@ -40,6 +42,12 @@ export const vaultApi = {
   },
   async saveEntry(input: EntryMutationInput) {
     return getDesktopApi().saveEntry(input) as Promise<VaultPayload>;
+  },
+  async exportEntries() {
+    return getDesktopApi().exportEntries() as Promise<ExportEntriesResult>;
+  },
+  async importEntries() {
+    return getDesktopApi().importEntries() as Promise<ImportEntriesResult>;
   },
   async reorderEntries(entryIds: string[]) {
     const api = getDesktopApi() as Partial<DesktopVaultApi>;

@@ -25,6 +25,15 @@ export interface VaultPayload {
   updatedAt: string;
 }
 
+export interface ExportEntriesResult {
+  completed: boolean;
+}
+
+export interface ImportEntriesResult {
+  completed: boolean;
+  payload?: VaultPayload;
+}
+
 export interface AppStatus {
   vaultExists: boolean;
   isUnlocked: boolean;

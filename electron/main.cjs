@@ -1,6 +1,6 @@
 const path = require("node:path");
 
-const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron");
 
 const vaultService = require("./vault-service.cjs");
 
@@ -8,6 +8,11 @@ let mainWindow = null;
 
 function getVaultStoragePath() {
   return path.join(app.getPath("userData"), "vault.enc.json");
+}
+
+function getDefaultExportPath() {
+  const date = new Date().toISOString().slice(0, 10);
+  return path.join(app.getPath("documents"), `passworder-export-${date}.json`);
 }
 
 function createMainWindow() {
@@ -70,6 +75,40 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:save-entry", async (_event, input) =>
     vaultService.saveEntry(getVaultStoragePath(), input),
   );
+  ipcMain.handle("vault:export-entries", async () => {
+    const result = await dialog.showSaveDialog(mainWindow ?? undefined, {
+      defaultPath: getDefaultExportPath(),
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      properties: ["createDirectory", "showOverwriteConfirmation"],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { completed: false };
+    }
+
+    await vaultService.exportEntries(getVaultStoragePath(), result.filePath);
+    return { completed: true };
+  });
+  ipcMain.handle("vault:import-entries", async () => {
+    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      properties: ["openFile"],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { completed: false };
+    }
+
+    const payload = await vaultService.importEntries(
+      getVaultStoragePath(),
+      result.filePaths[0],
+    );
+
+    return {
+      completed: true,
+      payload,
+    };
+  });
   ipcMain.handle("vault:reorder-entries", async (_event, entryIds) =>
     vaultService.reorderEntries(getVaultStoragePath(), entryIds),
   );

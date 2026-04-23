@@ -119,6 +119,11 @@ const EN_TRANSLATIONS = {
     "Remove copied data from the clipboard automatically.",
   "settings.languageLabel": "Language",
   "settings.languageDescription": "Choose the display language for the app.",
+  "settings.transferLabel": "Import / Export",
+  "settings.exportEntries": "Export Passwords",
+  "settings.importEntries": "Import Passwords",
+  "settings.transferDescription":
+    "Export your vault entries to a JSON backup and import them back into Passworder later.",
   "settings.storagePathLabel": "Local Storage Path",
   "settings.storagePathFallback": "Shown at runtime.",
   "settings.lockNow": "Lock Vault Now",
@@ -130,6 +135,8 @@ const EN_TRANSLATIONS = {
     "Electron runtime was not found. Start the app as a desktop app with `npm run dev`.",
   "errors.desktopRestartRequired":
     "Electron bridge was updated. Fully restart the desktop app to use drag sorting.",
+  "errors.importFileInvalid":
+    "The selected file is not a valid Passworder export.",
   "errors.vaultLocked": "Vault is locked.",
   "errors.masterPasswordTooShort":
     "Master password must be at least 12 characters.",
@@ -151,6 +158,8 @@ const EN_TRANSLATIONS = {
   "notice.entryUpdated": "Entry updated.",
   "notice.entryCreated": "New entry added.",
   "notice.entryDeleted": "Entry deleted.",
+  "notice.exportCompleted": "Passwords exported.",
+  "notice.importCompleted": "Passwords imported.",
   "notice.settingsSaved": "Vault settings saved.",
   "notice.copiedToClipboard": "Copied to clipboard.",
 } as const;
@@ -274,6 +283,11 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Kopyalanan veriler panodan otomatik olarak silinsin.",
   "settings.languageLabel": "Dil",
   "settings.languageDescription": "Uygulamanın görüntüleme dilini seçin.",
+  "settings.transferLabel": "İçe / Dışa Aktar",
+  "settings.exportEntries": "Şifreleri Dışa Aktar",
+  "settings.importEntries": "Şifreleri İçe Aktar",
+  "settings.transferDescription":
+    "Kasa kayıtlarını JSON yedeği olarak dışa aktarabilir ve daha sonra Passworder içine geri alabilirsiniz.",
   "settings.storagePathLabel": "Lokal Veri Yolu",
   "settings.storagePathFallback": "Çalışma zamanında gösterilecek.",
   "settings.lockNow": "Kasayı Şimdi Kilitle",
@@ -285,6 +299,8 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Electron çalışma zamanı bulunamadı. Uygulamayı masaüstü olarak `npm run dev` ile başlatın.",
   "errors.desktopRestartRequired":
     "Electron köprüsü güncellendi. Sürükleyerek sıralama için masaüstü uygulamayı tamamen yeniden başlatın.",
+  "errors.importFileInvalid":
+    "Seçilen dosya geçerli bir Passworder aktarım dosyası değil.",
   "errors.vaultLocked": "Kasa kilitli.",
   "errors.masterPasswordTooShort":
     "Master password en az 12 karakter olmalı.",
@@ -306,6 +322,8 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "notice.entryUpdated": "Kayıt güncellendi.",
   "notice.entryCreated": "Yeni kayıt eklendi.",
   "notice.entryDeleted": "Kayıt silindi.",
+  "notice.exportCompleted": "Şifreler dışa aktarıldı.",
+  "notice.importCompleted": "Şifreler içe aktarıldı.",
   "notice.settingsSaved": "Kasa ayarları kaydedildi.",
   "notice.copiedToClipboard": "Panoya kopyalandı.",
 };

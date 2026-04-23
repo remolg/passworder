@@ -3,11 +3,13 @@ import {
   Check,
   ChevronDown,
   ClipboardCheck,
+  Download,
   Globe,
   HardDrive,
   LockKeyhole,
   ShieldCheck,
   TimerReset,
+  Upload,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,15 +18,21 @@ import { cn } from "@/lib/utils";
 import { VaultSettings } from "@/types/vault";
 
 interface VaultSettingsCardProps {
+  busy?: boolean;
   settings: VaultSettings;
   storagePath?: string;
+  onExport?: () => void | Promise<unknown>;
+  onImport?: () => void | Promise<unknown>;
   onLockNow?: () => void | Promise<void>;
   onChange: (settings: VaultSettings) => void;
 }
 
 export function VaultSettingsCard({
+  busy,
   settings,
   storagePath,
+  onExport,
+  onImport,
   onLockNow,
   onChange,
 }: VaultSettingsCardProps) {
@@ -113,6 +121,46 @@ export function VaultSettingsCard({
               }
             />
           </SettingRow>
+        </div>
+
+        <div className="mt-6 h-px bg-white/[0.05]" />
+
+        <div className="pt-5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <p className="mono-label text-[10px] text-muted-foreground">
+              {t("settings.transferLabel")}
+            </p>
+          </div>
+          <p className="mt-3 text-[12px] leading-6 text-foreground/88">
+            {t("settings.transferDescription")}
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void onExport?.();
+              }}
+              disabled={busy}
+            >
+              <Download className="h-4 w-4" />
+              {t("settings.exportEntries")}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void onImport?.();
+              }}
+              disabled={busy}
+            >
+              <Upload className="h-4 w-4" />
+              {t("settings.importEntries")}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6 h-px bg-white/[0.05]" />

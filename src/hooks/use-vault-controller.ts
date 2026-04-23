@@ -181,6 +181,49 @@ export function useVaultController() {
     return true;
   }
 
+  async function exportEntries() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const result = await vaultApi.exportEntries();
+      if (!result.completed) {
+        return false;
+      }
+
+      setNotice("notice.exportCompleted");
+      return true;
+    } catch (caughtError) {
+      setError(toErrorMessage(caughtError));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function importEntries() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const result = await vaultApi.importEntries();
+      if (!result.completed || !result.payload) {
+        return false;
+      }
+
+      setPayload(result.payload);
+      setNotice("notice.importCompleted");
+      return true;
+    } catch (caughtError) {
+      setError(toErrorMessage(caughtError));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateSettings(settings: VaultSettings) {
     const nextPayload = await runMutation(
       () => vaultApi.updateSettings(settings),
@@ -222,6 +265,8 @@ export function useVaultController() {
     unlockVault,
     lockVault,
     saveEntry,
+    exportEntries,
+    importEntries,
     reorderEntries,
     deleteEntry,
     updateSettings,

@@ -454,8 +454,11 @@ function AppContent({
 
               {activeSection === "settings" ? (
                 <VaultSettingsCard
+                  busy={controller.busy}
                   settings={controller.payload.settings}
                   storagePath={controller.status.storagePath}
+                  onExport={controller.exportEntries}
+                  onImport={controller.importEntries}
                   onLockNow={handleManualLock}
                   onChange={handleSettingsChange}
                 />
