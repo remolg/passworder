@@ -91,17 +91,17 @@ export function PasswordList({
 
               return (
                 <article key={entry.id} className="py-4">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-stretch gap-3">
                     <button
                       type="button"
                       onClick={() => onOpenDetails(entry)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.03] text-[12px] font-semibold text-primary transition-colors hover:bg-white/[0.06]"
+                      className="flex aspect-square min-h-[72px] shrink-0 items-center justify-center self-stretch rounded-[14px] bg-white/[0.03] text-[20px] font-semibold text-primary transition-colors hover:bg-white/[0.06]"
                       aria-label={`${entry.service} details`}
                     >
                       {getInitials(entry.service)}
                     </button>
 
-                    <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <button
@@ -131,7 +131,7 @@ export function PasswordList({
                               <UserRound className="h-3.5 w-3.5 shrink-0" />
                             )}
                             <span className="truncate">
-                              {entry.username || t("passwords.noUsername")}
+                              {maskUsername(entry.username) || t("passwords.noUsername")}
                             </span>
                             <span
                               className={cn(
@@ -201,4 +201,23 @@ function maskValue(value: string) {
   }
 
   return "\u2022".repeat(Math.max(value.length, 8));
+}
+
+function maskUsername(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const atIndex = value.indexOf("@");
+  if (atIndex <= 1) {
+    return value;
+  }
+
+  const localPart = value.slice(0, atIndex);
+  const domainPart = value.slice(atIndex);
+  const visiblePrefixLength = Math.min(3, Math.max(1, Math.ceil(localPart.length / 3)));
+  const visiblePrefix = localPart.slice(0, visiblePrefixLength);
+  const maskedPart = "\u2022".repeat(Math.max(localPart.length - visiblePrefixLength, 2));
+
+  return `${visiblePrefix}${maskedPart}${domainPart}`;
 }
