@@ -274,14 +274,31 @@ export function useVaultController() {
   };
 }
 
-function toErrorMessage(caughtError: unknown) {
+function toErrorMessage(caughtError: unknown): string {
   if (typeof caughtError === "string") {
-    return caughtError;
+    return extractTranslationKey(caughtError) ?? "errors.unexpected";
   }
 
   if (caughtError instanceof Error) {
-    return caughtError.message;
+    return (
+      extractTranslationKey(caughtError.message) ??
+      toErrorMessage((caughtError as Error & { cause?: unknown }).cause)
+    );
+  }
+
+  if (
+    typeof caughtError === "object" &&
+    caughtError !== null &&
+    "message" in caughtError &&
+    typeof caughtError.message === "string"
+  ) {
+    return extractTranslationKey(caughtError.message) ?? "errors.unexpected";
   }
 
   return "errors.unexpected";
+}
+
+function extractTranslationKey(value: string): string | null {
+  const match = value.match(/(?:errors|notice)\.[A-Za-z0-9]+/);
+  return match?.[0] ?? null;
 }

@@ -145,6 +145,11 @@ function AppContent({
       controller.status.defaultAutoLockMinutes,
     onLock: () => controller.lockVault(false),
   });
+  const statusMessageKey = controller.error ?? controller.notice;
+  const statusMessage = statusMessageKey
+    ? resolveText(statusMessageKey)
+    : undefined;
+  const statusTone: "notice" | "error" = controller.error ? "error" : "notice";
 
   if (controller.loading) {
     return (
@@ -153,6 +158,8 @@ function AppContent({
           <StatusBar
             locked
             defaultAutoLockMinutes={controller.status.defaultAutoLockMinutes}
+            message={statusMessage}
+            tone={statusTone}
           />
         }
       >
@@ -180,6 +187,8 @@ function AppContent({
           <StatusBar
             locked
             defaultAutoLockMinutes={controller.status.defaultAutoLockMinutes}
+            message={statusMessage}
+            tone={statusTone}
           />
         }
       >
@@ -332,16 +341,11 @@ function AppContent({
           <StatusBar
             entryCount={controller.payload.entries.length}
             settings={controller.payload.settings}
+            message={statusMessage}
+            tone={statusTone}
           />
         }
       >
-        {controller.notice || controller.error ? (
-          <StatusBanner
-            tone={controller.error ? "error" : "notice"}
-            message={resolveText(controller.error ?? controller.notice ?? "")}
-          />
-        ) : null}
-
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className="relative min-h-0 flex-1 overflow-hidden">
             {navOpen ? (
@@ -588,35 +592,20 @@ function WindowControlButton({
   );
 }
 
-function StatusBanner({
-  message,
-  tone,
-}: {
-  message: string;
-  tone: "notice" | "error";
-}) {
-  return (
-    <div
-      className={cn(
-        "mx-4 mt-4 px-4 py-2 text-[12px] leading-5",
-        tone === "error" ? "text-destructive" : "text-primary",
-      )}
-    >
-      {message}
-    </div>
-  );
-}
-
 function StatusBar({
   defaultAutoLockMinutes,
   entryCount,
   locked,
+  message,
   settings,
+  tone = "notice",
 }: {
   defaultAutoLockMinutes?: number;
   entryCount?: number;
   locked?: boolean;
+  message?: string;
   settings?: VaultSettings;
+  tone?: "notice" | "error";
 }) {
   const { t } = useI18n();
 
@@ -631,15 +620,37 @@ function StatusBar({
         </span>
       </div>
 
-      <div className="flex items-center">
-        <button
-          type="button"
-          onClick={() => void appWindow.openExternal("https://gitgit.me/remolg")}
-          className="titlebar-no-drag text-[11px] font-medium normal-case tracking-[0.04em] text-[#9fa7ff] transition-colors hover:text-[#c0c1ff]"
-          style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
-        >
-          made by remolg
-        </button>
+      <div className="flex min-w-0 items-center justify-end">
+        <div className="relative flex h-6 w-[220px] items-center justify-end overflow-hidden">
+          <button
+            type="button"
+            onClick={() => void appWindow.openExternal("https://gitgit.me/remolg")}
+            className={cn(
+              "titlebar-no-drag absolute inset-y-0 right-0 flex items-center justify-end text-[11px] font-medium leading-none normal-case tracking-[0.04em] text-[#9fa7ff] transition-all duration-300 ease-out hover:text-[#c0c1ff] motion-reduce:transition-none",
+              message
+                ? "pointer-events-none translate-x-2 opacity-0"
+                : "translate-x-0 opacity-100",
+            )}
+            style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
+          >
+            made by remolg
+          </button>
+
+          <span
+            aria-live={tone === "error" ? "assertive" : "polite"}
+            className={cn(
+              "absolute inset-y-0 right-0 flex max-w-[220px] items-center justify-end truncate text-right text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-300 ease-out motion-reduce:transition-none",
+              tone === "error" ? "text-destructive" : "text-[#9fa7ff]",
+              message
+                ? "translate-x-0 opacity-100"
+                : "pointer-events-none -translate-x-2 opacity-0",
+            )}
+            style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
+            title={message}
+          >
+            {message}
+          </span>
+        </div>
       </div>
     </footer>
   );
