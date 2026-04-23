@@ -18,6 +18,13 @@ function getDesktopApi(): DesktopVaultApi {
   return window.passworder;
 }
 
+export function supportsEntryReorder() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.passworder?.reorderEntries === "function"
+  );
+}
+
 export const vaultApi = {
   async getStatus() {
     return getDesktopApi().getStatus() as Promise<AppStatus>;
@@ -33,6 +40,14 @@ export const vaultApi = {
   },
   async saveEntry(input: EntryMutationInput) {
     return getDesktopApi().saveEntry(input) as Promise<VaultPayload>;
+  },
+  async reorderEntries(entryIds: string[]) {
+    const api = getDesktopApi() as Partial<DesktopVaultApi>;
+    if (typeof api.reorderEntries !== "function") {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    return api.reorderEntries(entryIds) as Promise<VaultPayload>;
   },
   async deleteEntry(id: string) {
     return getDesktopApi().deleteEntry(id) as Promise<VaultPayload>;

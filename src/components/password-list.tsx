@@ -1,4 +1,5 @@
-import { Check, KeyRound, Plus, Search, UserRound } from "lucide-react";
+import { type DragEvent, useState } from "react";
+import { Check, GripVertical, KeyRound, Plus, Search, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,8 @@ interface PasswordListProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onOpenDetails: (entry: VaultEntry) => void;
+  dragEnabled: boolean;
+  onReorder: (entryIds: string[]) => Promise<void> | void;
   onCopyUsername: (entry: VaultEntry) => Promise<boolean>;
   onCopyPassword: (entry: VaultEntry) => Promise<boolean>;
   onCreateNew: () => void;
@@ -22,6 +25,8 @@ export function PasswordList({
   searchTerm,
   onSearchChange,
   onOpenDetails,
+  dragEnabled,
+  onReorder,
   onCopyUsername,
   onCopyPassword,
   onCreateNew,
@@ -29,6 +34,11 @@ export function PasswordList({
   const { language, t } = useI18n();
   const copyFeedback = useCopyFeedback();
   const compactTitle = language === "tr" ? "Kasa" : "Vault";
+  const [draggedEntryId, setDraggedEntryId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPlacement, setDropPlacement] = useState<"before" | "after" | null>(null);
+  const reorderingEnabled =
+    dragEnabled && searchTerm.trim().length === 0 && entries.length > 1;
 
   async function handleCopy(
     key: string,
@@ -39,6 +49,58 @@ export function PasswordList({
     if (success) {
       copyFeedback.markCopied(key);
     }
+  }
+
+  function handleDragStart(event: DragEvent<HTMLElement>, entryId: string) {
+    if (!reorderingEnabled) {
+      return;
+    }
+
+    setDraggedEntryId(entryId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", entryId);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLElement>, targetId: string) {
+    if (!draggedEntryId || draggedEntryId === targetId) {
+      return;
+    }
+
+    event.preventDefault();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const nextPlacement =
+      event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+
+    setDropTargetId(targetId);
+    setDropPlacement(nextPlacement);
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  async function handleDrop(event: DragEvent<HTMLElement>, targetId: string) {
+    if (!draggedEntryId || !dropPlacement || draggedEntryId === targetId) {
+      clearDragState();
+      return;
+    }
+
+    event.preventDefault();
+    const nextOrder = reorderEntryIds(
+      entries.map((entry) => entry.id),
+      draggedEntryId,
+      targetId,
+      dropPlacement,
+    );
+
+    clearDragState();
+
+    if (nextOrder) {
+      await onReorder(nextOrder);
+    }
+  }
+
+  function clearDragState() {
+    setDraggedEntryId(null);
+    setDropTargetId(null);
+    setDropPlacement(null);
   }
 
   return (
@@ -90,8 +152,31 @@ export function PasswordList({
               const passwordCopied = copyFeedback.isCopied(`password:${entry.id}`);
 
               return (
-                <article key={entry.id} className="py-4">
-                  <div className="flex items-stretch gap-3">
+                <article
+                  key={entry.id}
+                  className="relative py-4"
+                  draggable={reorderingEnabled}
+                  onDragStart={(event) => handleDragStart(event, entry.id)}
+                  onDragOver={(event) => handleDragOver(event, entry.id)}
+                  onDrop={(event) => void handleDrop(event, entry.id)}
+                  onDragEnd={clearDragState}
+                >
+                  {dropTargetId === entry.id && dropPlacement ? (
+                    <div
+                      className={cn(
+                        "absolute left-0 right-0 z-10 h-[2px] rounded-full bg-primary",
+                        dropPlacement === "before" ? "top-0" : "bottom-0",
+                      )}
+                    />
+                  ) : null}
+
+                  <div
+                    className={cn(
+                      "flex items-stretch gap-3 rounded-[16px] transition-opacity",
+                      reorderingEnabled && "cursor-grab active:cursor-grabbing",
+                      draggedEntryId === entry.id && "opacity-35",
+                    )}
+                  >
                     <button
                       type="button"
                       onClick={() => onOpenDetails(entry)}
@@ -143,6 +228,12 @@ export function PasswordList({
                             />
                           </button>
                         </div>
+
+                        {reorderingEnabled ? (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground/65">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
+                        ) : null}
                       </div>
 
                       <button
@@ -220,4 +311,29 @@ function maskUsername(value: string) {
   const maskedPart = "\u2022".repeat(Math.max(localPart.length - visiblePrefixLength, 2));
 
   return `${visiblePrefix}${maskedPart}${domainPart}`;
+}
+
+function reorderEntryIds(
+  entryIds: string[],
+  sourceId: string,
+  targetId: string,
+  placement: "before" | "after",
+) {
+  const sourceIndex = entryIds.indexOf(sourceId);
+  const targetIndex = entryIds.indexOf(targetId);
+
+  if (sourceIndex === -1 || targetIndex === -1) {
+    return null;
+  }
+
+  const nextIds = entryIds.slice();
+  nextIds.splice(sourceIndex, 1);
+
+  const adjustedTargetIndex =
+    sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+  const insertIndex =
+    placement === "before" ? adjustedTargetIndex : adjustedTargetIndex + 1;
+
+  nextIds.splice(insertIndex, 0, sourceId);
+  return nextIds;
 }

@@ -166,6 +166,21 @@ export function useVaultController() {
     return true;
   }
 
+  async function reorderEntries(entryIds: string[]) {
+    const nextPayload = await runMutation(
+      () => vaultApi.reorderEntries(entryIds),
+      undefined,
+      false,
+    );
+
+    if (!nextPayload) {
+      return false;
+    }
+
+    setPayload(nextPayload);
+    return true;
+  }
+
   async function updateSettings(settings: VaultSettings) {
     const nextPayload = await runMutation(
       () => vaultApi.updateSettings(settings),
@@ -207,6 +222,7 @@ export function useVaultController() {
     unlockVault,
     lockVault,
     saveEntry,
+    reorderEntries,
     deleteEntry,
     updateSettings,
     copyToClipboard,

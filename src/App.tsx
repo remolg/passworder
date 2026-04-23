@@ -20,7 +20,7 @@ import { UnlockScreen } from "@/components/unlock-screen";
 import { VaultSettingsCard } from "@/components/vault-settings-card";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useVaultController } from "@/hooks/use-vault-controller";
-import { appWindow } from "@/lib/desktop";
+import { appWindow, supportsEntryReorder } from "@/lib/desktop";
 import {
   getStoredLanguage,
   I18nProvider,
@@ -196,10 +196,9 @@ function AppContent({
     );
   }
 
-  const filteredEntries = controller.payload.entries
-    .slice()
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .filter((entry) => matchesSearch(entry, searchTerm, language));
+  const filteredEntries = controller.payload.entries.filter((entry) =>
+    matchesSearch(entry, searchTerm, language),
+  );
 
   async function handleQuickAddSubmit() {
     const success = await controller.saveEntry(toMutationInput(quickAddValues));
@@ -249,6 +248,13 @@ function AppContent({
           }
         : current,
     );
+  }
+
+  async function handleReorder(entryIds: string[]) {
+    const success = await controller.reorderEntries(entryIds);
+    if (success) {
+      autoLock.touch();
+    }
   }
 
   async function handleSettingsChange(nextSettings: VaultSettings) {
@@ -414,6 +420,8 @@ function AppContent({
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
                     onOpenDetails={setSelectedEntry}
+                    dragEnabled={supportsEntryReorder()}
+                    onReorder={handleReorder}
                     onCopyUsername={(entry) => handleCopy(entry.username)}
                     onCopyPassword={(entry) => handleCopy(entry.password)}
                     onCreateNew={() => {

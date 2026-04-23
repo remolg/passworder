@@ -128,6 +128,8 @@ const EN_TRANSLATIONS = {
   "edit.save": "Save Changes",
   "errors.runtimeMissing":
     "Electron runtime was not found. Start the app as a desktop app with `npm run dev`.",
+  "errors.desktopRestartRequired":
+    "Electron bridge was updated. Fully restart the desktop app to use drag sorting.",
   "errors.vaultLocked": "Vault is locked.",
   "errors.masterPasswordTooShort":
     "Master password must be at least 12 characters.",
@@ -281,6 +283,8 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "edit.save": "Değişiklikleri Kaydet",
   "errors.runtimeMissing":
     "Electron çalışma zamanı bulunamadı. Uygulamayı masaüstü olarak `npm run dev` ile başlatın.",
+  "errors.desktopRestartRequired":
+    "Electron köprüsü güncellendi. Sürükleyerek sıralama için masaüstü uygulamayı tamamen yeniden başlatın.",
   "errors.vaultLocked": "Kasa kilitli.",
   "errors.masterPasswordTooShort":
     "Master password en az 12 karakter olmalı.",

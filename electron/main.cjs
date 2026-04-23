@@ -70,6 +70,9 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:save-entry", async (_event, input) =>
     vaultService.saveEntry(getVaultStoragePath(), input),
   );
+  ipcMain.handle("vault:reorder-entries", async (_event, entryIds) =>
+    vaultService.reorderEntries(getVaultStoragePath(), entryIds),
+  );
   ipcMain.handle("vault:delete-entry", async (_event, id) =>
     vaultService.deleteEntry(getVaultStoragePath(), id),
   );

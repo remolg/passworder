@@ -11,6 +11,7 @@ export interface DesktopVaultApi {
   unlockVault: (masterPassword: string) => Promise<VaultPayload>;
   lockVault: () => Promise<void>;
   saveEntry: (input: EntryMutationInput) => Promise<VaultPayload>;
+  reorderEntries: (entryIds: string[]) => Promise<VaultPayload>;
   deleteEntry: (id: string) => Promise<VaultPayload>;
   updateSettings: (settings: VaultSettings) => Promise<VaultPayload>;
   copyToClipboard: (value: string, clearAfterSeconds: number) => Promise<void>;

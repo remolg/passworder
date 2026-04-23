@@ -174,6 +174,23 @@ function validateEntryInput(input) {
   }
 }
 
+function validateEntryOrder(entryIds, entries) {
+  if (!Array.isArray(entryIds) || entryIds.length !== entries.length) {
+    throw new Error("errors.unexpected");
+  }
+
+  const currentIds = new Set(entries.map((entry) => entry.id));
+  if (currentIds.size !== entryIds.length) {
+    throw new Error("errors.unexpected");
+  }
+
+  for (const entryId of entryIds) {
+    if (typeof entryId !== "string" || !currentIds.has(entryId)) {
+      throw new Error("errors.unexpected");
+    }
+  }
+}
+
 function buildEntry(input, existingEntry) {
   const now = isoNow();
 
@@ -297,8 +314,22 @@ async function saveEntry(storagePath, input) {
       currentSession.payload.entries[index],
     );
   } else {
-    currentSession.payload.entries.push(buildEntry(input));
+    currentSession.payload.entries.unshift(buildEntry(input));
   }
+
+  await persistSession(storagePath);
+  return currentSession.payload;
+}
+
+async function reorderEntries(storagePath, entryIds) {
+  const currentSession = ensureUnlockedSession();
+  validateEntryOrder(entryIds, currentSession.payload.entries);
+
+  const entriesById = new Map(
+    currentSession.payload.entries.map((entry) => [entry.id, entry]),
+  );
+
+  currentSession.payload.entries = entryIds.map((entryId) => entriesById.get(entryId));
 
   await persistSession(storagePath);
   return currentSession.payload;
@@ -346,6 +377,7 @@ module.exports = {
   unlockVault,
   lockVault,
   saveEntry,
+  reorderEntries,
   deleteEntry,
   updateSettings,
   copyToClipboard,
