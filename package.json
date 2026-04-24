@@ -2,7 +2,7 @@
   "name": "passworder",
   "private": true,
   "version": "0.1.0",
-  "description": "Tamamen lokal Ã§alÄ±ÅŸan Electron tabanlÄ± masaÃ¼stÃ¼ ÅŸifre yÃ¶neticisi",
+  "description": "Tamamen lokal çalışan Electron tabanlı masaüstü şifre yöneticisi",
   "author": "Codex",
   "type": "module",
   "main": "electron/main.cjs",
@@ -13,7 +13,9 @@
     "build": "tsc && vite build",
     "start": "electron .",
     "package:dir": "npm run build && electron-builder --dir",
-    "package:win": "npm run build && electron-builder --win nsis"
+    "package:win": "npm run build && electron-builder --win nsis && npm run package:portable",
+    "release:win": "npm run package:win",
+    "package:portable": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$v=(node -p \\\"require('./package.json').version\\\"); Compress-Archive -Path release/win-unpacked/* -DestinationPath \\\"release/Passworder-Portable-$v-win-x64.zip\\\" -Force\""
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

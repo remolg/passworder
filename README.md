@@ -1,51 +1,78 @@
+# Passworder
 
-# Project Title
+**Passworder**, gizlilik odaklı ve tamamen çevrimdışı çalışan modern bir masaüstü şifre yöneticisidir. Verileriniz buluta gönderilmez; yalnızca kendi cihazınızda, şifrelenmiş şekilde saklanır.
 
-A brief description of what this project does and who it's for
+![Passworder ekran görüntüsü](src/assets/readme/3.png)
 
-# PASSWORDER
+## İndir ve Kullan
 
-**Passworder**, dijital güvenliğinizi en üst seviyeye taşımak için tasarlanmış, **gizlilik odaklı (privacy-first)** ve tamamen **çevrimdışı (offline)** çalışan modern bir masaüstü şifre yöneticisidir. Verileriniz asla buluta çıkmaz; sadece sizin cihazınızda, sizin kontrolünüzde kalır.
+Windows kullanıcıları uygulamayı GitHub **Releases** bölümünden indirebilir.
 
-![Logo](/src/assets/readme/3.png)
+- **Kurulumlu sürüm:** `Passworder-Setup-0.1.0.exe` dosyasını indirip çalıştırın.
+- **Taşınabilir sürüm:** `Passworder-Portable-0.1.0-win-x64.zip` dosyasını indirin, zipten çıkarın ve `Passworder.exe` dosyasını çalıştırın.
+- Uygulama tamamen yerel çalışır; internet bağlantısı veya hesap gerekmez.
 
+## Temel Özellikler
 
-### 🛡️ Temel Özellikler
+### Maksimum Güvenlik ve Gizlilik
 
-**Maksimum Güvenlik ve Gizlilik**
-* **Offline-First Mimari:** Sunucu, bulut senkronizasyonu veya telemetri takibi yoktur. Tüm verileriniz yalnızca yerel cihazınızda saklanır.
-* **Askeri Düzeyde Şifreleme:** Kasa verileriniz **AES-256-GCM** algoritması ile korunur. Kasa anahtarınız ise **scrypt** kullanılarak ana şifrenizden (master password) türetilir.
-* **Bellek Güvenliği:** Kasa kilitlendiğinde hassas veriler bellekten temizlenir; veriler diskte yalnızca şifreli bir "blob" olarak tutulur.
+- **Offline-first mimari:** Sunucu, bulut senkronizasyonu veya telemetri yoktur.
+- **Güçlü şifreleme:** Kasa verileri `AES-256-GCM` ile korunur; kasa anahtarı ana şifreden `scrypt` ile türetilir.
+- **Yerel depolama:** Veriler diskte yalnızca şifrelenmiş biçimde tutulur.
 
-**Akıllı Otomasyon ve Araçlar**
-* **Password Studio (Şifre Üretici):** İhtiyacınıza göre uzunluk, karakter tipi ve karmaşıklık kriterlerini belirleyerek saniyeler içinde güçlü şifreler oluşturun.
-* **Otomatik Kilit (Auto Lock):** Belirlediğiniz süre boyunca işlem yapılmadığında kasa kendini otomatik olarak kilitler.
-* **Pano Temizleyici:** Kopyaladığınız şifreler, belirlediğiniz süre sonunda sistem panosundan (clipboard) otomatik olarak silinir.
+### Akıllı Araçlar
 
-**Modern ve Kullanıcı Dostu Arayüz**
-* **Minimalist Tasarım:** Electron, React ve Tailwind CSS (shadcn/ui) ile geliştirilen, göz yormayan, profesyonel masaüstü deneyimi.
-* **Hızlı Erişim:** Şifreler arasında anlık arama yapın, tek tıkla kopyalayın veya kayıtlarınızı kolayca yönetin.
+- **Şifre üretici:** Uzunluk ve karakter seçenekleriyle güçlü şifreler oluşturur.
+- **Otomatik kilit:** Belirlenen süre işlem yapılmazsa kasayı kilitler.
+- **Pano temizleme:** Kopyalanan şifreleri belirlenen süre sonunda panodan temizler.
 
-![Logo](/src/assets/readme/2.png)
+### Modern Arayüz
 
-### ⚙️ Teknik Detaylar
+- Electron, React, TypeScript ve Tailwind CSS ile geliştirilmiş sade masaüstü deneyimi.
+- Hızlı arama, tek tıkla kopyalama ve kolay kayıt yönetimi.
 
-* **Framework:** Electron + React + TypeScript
-* **UI Bileşenleri:** shadcn/ui & Tailwind CSS
-* **Kripto:** Node.js Crypto (scrypt & AES-256-GCM)
-* **Veri Yapısı:** Yerel şifrelenmiş JSON tabanlı güvenli depolama.
+![Passworder kasa ekranı](src/assets/readme/2.png)
 
-![Logo](/src/assets/readme/1.png)
+## Geliştirici İçin Yayın Alma
 
-### 📞 İletişim
+Windows çıktısı üretmek için:
 
-Uygulama ile ilgili sorularınız veya iş birliği talepleriniz için bana ulaşabilirsiniz:
+```bash
+npm install
+npm run release:win
+```
 
-| Platform | Bilgi / Link |
+Komut tamamlandığında `release/` klasöründe GitHub Release'e yüklenebilecek dosyalar oluşur:
+
+- `Passworder-Setup-0.1.0.exe`
+- `Passworder-Portable-0.1.0-win-x64.zip`
+- `latest.yml`
+
+GitHub'da yayınlamak için:
+
+1. Repo sayfasında sağ taraftaki **Releases** alanından **Create a new release** seçin.
+2. Tag alanına örnek olarak `v0.1.0` yazın.
+3. Başlığa `Passworder v0.1.0` yazın.
+4. `release/` klasöründeki `.exe`, `.zip` ve `latest.yml` dosyalarını **Assets** bölümüne sürükleyip bırakın.
+5. **Publish release** butonuna basın.
+
+![Passworder detay ekranı](src/assets/readme/1.png)
+
+## Teknik Detaylar
+
+- **Framework:** Electron + React + TypeScript
+- **Arayüz:** Tailwind CSS
+- **Kripto:** Node.js Crypto (`scrypt`, `AES-256-GCM`)
+- **Depolama:** Yerel şifrelenmiş JSON tabanlı kasa
+
+## İletişim
+
+| Platform | Bilgi |
 | :--- | :--- |
-| **Discord** | remolgcum |
-| **E-posta** | sadikahmet252525@gmail.com |
-| **Geliştirici** | remolg |
+| Discord | remolgcum |
+| E-posta | sadikahmet252525@gmail.com |
+| Geliştirici | remolg |
 
 ---
-*Güvenliğiniz sizin elinizde. Passworder ile şifrelerinizi yerel ve şifreli bir kalede saklayın.*
+
+Güvenliğiniz sizin elinizde. Passworder ile şifrelerinizi yerel ve şifreli bir kasada saklayın.
