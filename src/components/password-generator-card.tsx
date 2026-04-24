@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Check, Copy, Info, RefreshCcw, WandSparkles } from "lucide-react";
+import { Check, Copy, RefreshCcw, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
@@ -203,25 +203,11 @@ export function PasswordGeneratorCard({
           />
         </section>
 
-        <div className="mt-6 h-px bg-white/[0.05]" />
-
         {error ? (
-          <p className="pt-5 text-[12px] leading-6 text-destructive">
+          <p className="mt-6 text-[12px] leading-6 text-destructive">
             {resolveText(error)}
           </p>
-        ) : (
-          <div className="flex gap-3 pb-1 pt-5">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div>
-              <p className="text-[12px] font-medium text-foreground">
-                {t("generator.localTitle")}
-              </p>
-              <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
-                {t("generator.localDescription")}
-              </p>
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
 
       <div className="border-t border-white/[0.05] px-5 py-4">

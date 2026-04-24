@@ -256,34 +256,25 @@ export function VaultSettingsCard({
               {t("settings.transferLabel")}
             </p>
           </div>
-          <p className="mt-3 text-[12px] leading-6 text-foreground/88">
-            {t("settings.transferDescription")}
-          </p>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
+          <div className="mt-4 space-y-3">
+            <TransferActionCard
+              icon={<Download className="h-4 w-4" />}
+              title={t("settings.exportEntries")}
+              disabled={busy}
               onClick={() => {
                 void onExport?.();
               }}
-              disabled={busy}
-            >
-              <Download className="h-4 w-4" />
-              {t("settings.exportEntries")}
-            </Button>
+            />
 
-            <Button
-              type="button"
-              variant="outline"
+            <TransferActionCard
+              icon={<Upload className="h-4 w-4" />}
+              title={t("settings.importEntries")}
+              disabled={busy}
               onClick={() => {
                 void onImport?.();
               }}
-              disabled={busy}
-            >
-              <Upload className="h-4 w-4" />
-              {t("settings.importEntries")}
-            </Button>
+            />
           </div>
         </div>
 
@@ -348,6 +339,35 @@ function PasswordField({
         onChange={(event) => onChange(event.target.value)}
       />
     </div>
+  );
+}
+
+function TransferActionCard({
+  disabled,
+  icon,
+  onClick,
+  title,
+}: {
+  disabled?: boolean;
+  icon: ReactNode;
+  onClick: () => void;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex w-full items-start gap-3 rounded-[16px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 text-left transition-colors hover:border-primary/25 hover:bg-white/[0.045] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-primary/12 text-primary shadow-[inset_0_0_0_1px_rgba(99,102,241,0.12)]">
+        {icon}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-medium text-foreground">{title}</p>
+      </div>
+    </button>
   );
 }
 

@@ -138,7 +138,9 @@ const EN_TRANSLATIONS = {
   "settings.languageDescription": "Choose the display language for the app.",
   "settings.transferLabel": "Import / Export",
   "settings.exportEntries": "Export Passwords",
+  "settings.exportEntriesHint": "Create a JSON backup of your current vault.",
   "settings.importEntries": "Import Passwords",
+  "settings.importEntriesHint": "Restore entries from a previous Passworder backup.",
   "settings.transferDescription":
     "Export your vault entries to a JSON backup and import them back into Passworder later.",
   "settings.storagePathLabel": "Local Storage Path",
@@ -322,7 +324,9 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "settings.languageDescription": "Uygulamanın görüntüleme dilini seçin.",
   "settings.transferLabel": "İçe / Dışa Aktar",
   "settings.exportEntries": "Şifreleri Dışa Aktar",
+  "settings.exportEntriesHint": "Mevcut kasanın JSON yedeğini oluşturun.",
   "settings.importEntries": "Şifreleri İçe Aktar",
+  "settings.importEntriesHint": "Eski bir Passworder yedeğinden kayıtları geri yükleyin.",
   "settings.transferDescription":
     "Kasa kayıtlarını JSON yedeği olarak dışa aktarabilir ve daha sonra Passworder içine geri alabilirsiniz.",
   "settings.storagePathLabel": "Lokal Veri Yolu",
