@@ -9,6 +9,7 @@ export interface VaultSettings {
 export interface VaultEntry {
   id: string;
   service: string;
+  logoId?: string;
   username: string;
   password: string;
   url: string;
@@ -44,6 +45,7 @@ export interface AppStatus {
 export interface EntryFormValues {
   id?: string;
   service: string;
+  logoId: string;
   username: string;
   password: string;
   url: string;
@@ -54,6 +56,7 @@ export interface EntryFormValues {
 export interface EntryMutationInput {
   id?: string;
   service: string;
+  logoId?: string;
   username: string;
   password: string;
   url: string;

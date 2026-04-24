@@ -161,10 +161,20 @@ function normalizeTags(tags) {
   return tags.map((tag) => tag.trim()).filter(Boolean);
 }
 
+function normalizeLogoId(logoId) {
+  if (typeof logoId !== "string") {
+    return undefined;
+  }
+
+  const trimmedLogoId = logoId.trim();
+  return trimmedLogoId || undefined;
+}
+
 function cloneEntry(entry) {
   return {
     id: entry.id,
     service: entry.service,
+    logoId: normalizeLogoId(entry.logoId),
     username: entry.username,
     password: entry.password,
     url: entry.url,
@@ -234,6 +244,7 @@ function normalizeImportedEntry(entry) {
   return {
     id: typeof entry.id === "string" && entry.id ? entry.id : crypto.randomUUID(),
     service,
+    logoId: normalizeLogoId(entry.logoId),
     username: typeof entry.username === "string" ? entry.username.trim() : "",
     password,
     url: typeof entry.url === "string" ? entry.url.trim() : "",
@@ -270,6 +281,7 @@ function buildEntry(input, existingEntry) {
   return {
     id: existingEntry?.id ?? crypto.randomUUID(),
     service: input.service.trim(),
+    logoId: normalizeLogoId(input.logoId),
     username: input.username.trim(),
     password: input.password,
     url: input.url.trim(),

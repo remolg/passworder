@@ -1,11 +1,13 @@
 import { type ReactNode, useState } from "react";
-import { Check, Copy, Eye, EyeOff, WandSparkles } from "lucide-react";
+import { Check, ChevronDown, Copy, Eye, EyeOff, WandSparkles } from "lucide-react";
 
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
+import { ServiceLogoBadge } from "@/components/service-logo-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
+import { getLogoOption, LOGO_OPTIONS } from "@/lib/logo-catalog";
 import { cn } from "@/lib/utils";
 import { EntryFormValues } from "@/types/vault";
 
@@ -22,11 +24,14 @@ export function EntryFormFields({
   onCopyPassword,
   onGeneratePassword,
 }: EntryFormFieldsProps) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [showPassword, setShowPassword] = useState(false);
+  const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const copyFeedback = useCopyFeedback();
   const strength = getPasswordStrength(values.password);
   const passwordCopied = copyFeedback.isCopied("password");
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const selectedLogo = getLogoOption(values.logoId);
 
   async function handleCopyPassword() {
     if (!onCopyPassword) {
@@ -39,6 +44,28 @@ export function EntryFormFields({
     }
   }
 
+  function handleLogoSelect(nextLogoId: string) {
+    if (values.logoId === nextLogoId) {
+      return;
+    }
+
+    const currentLogo = getLogoOption(values.logoId);
+    onChange("logoId", nextLogoId);
+
+    const nextTags = syncTagsWithLogo(
+      values.tags,
+      currentLogo?.tag ?? null,
+      getLogoOption(nextLogoId)?.tag ?? null,
+      locale,
+    );
+
+    if (nextTags !== values.tags) {
+      onChange("tags", nextTags);
+    }
+
+    setLogoPickerOpen(false);
+  }
+
   return (
     <div className="space-y-5">
       <FieldGroup label={t("fields.service")} htmlFor="service">
@@ -48,6 +75,71 @@ export function EntryFormFields({
           onChange={(event) => onChange("service", event.target.value)}
           placeholder={t("fields.servicePlaceholder")}
         />
+      </FieldGroup>
+
+      <FieldGroup label={t("fields.logo")} htmlFor="logoId">
+        <div className="space-y-3">
+          <button
+            id="logoId"
+            type="button"
+            onClick={() => setLogoPickerOpen((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-left transition-colors hover:border-white/[0.12] hover:bg-white/[0.03]"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <ServiceLogoBadge
+                service={values.service}
+                logoId={values.logoId}
+                className="h-10 w-10 shrink-0 rounded-[12px]"
+                imageClassName="h-5 w-5"
+                fallbackClassName="text-[16px]"
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-[12px] font-medium text-foreground">
+                  {selectedLogo?.label ?? t("fields.logoFallback")}
+                </span>
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                logoPickerOpen && "rotate-180",
+              )}
+            />
+          </button>
+
+          {logoPickerOpen ? (
+            <div className="grid grid-cols-5 gap-2 rounded-[16px] border border-white/[0.06] bg-white/[0.02] p-3">
+              <LogoPickerButton
+                active={!values.logoId}
+                label={t("fields.logoFallback")}
+                onClick={() => handleLogoSelect("")}
+              >
+                <ServiceLogoBadge
+                  service={values.service}
+                  className="rounded-[12px] bg-transparent"
+                  imageClassName="h-6 w-6"
+                  fallbackClassName="text-[18px]"
+                />
+              </LogoPickerButton>
+
+              {LOGO_OPTIONS.map((logo) => (
+                <LogoPickerButton
+                  key={logo.id}
+                  active={values.logoId === logo.id}
+                  label={logo.label}
+                  onClick={() => handleLogoSelect(logo.id)}
+                >
+                  <img
+                    src={logo.src}
+                    alt={logo.label}
+                    className="h-6 w-6 object-contain"
+                    draggable={false}
+                  />
+                </LogoPickerButton>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </FieldGroup>
 
       <FieldGroup label={t("fields.url")} htmlFor="url">
@@ -221,6 +313,78 @@ function InlineActionButton({
       {children}
     </button>
   );
+}
+
+function LogoPickerButton({
+  active,
+  children,
+  label,
+  onClick,
+}: {
+  active?: boolean;
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex aspect-square items-center justify-center rounded-[12px] border border-white/[0.06] bg-white/[0.02] transition-colors",
+        active
+          ? "border-primary/45 bg-primary/10"
+          : "hover:border-white/[0.14] hover:bg-white/[0.04]",
+      )}
+      aria-label={label}
+      aria-pressed={active}
+      title={label}
+    >
+      {children}
+    </button>
+  );
+}
+
+function syncTagsWithLogo(
+  tagsValue: string,
+  currentTag: string | null,
+  nextTag: string | null,
+  locale: string,
+) {
+  if (!currentTag && !nextTag) {
+    return tagsValue;
+  }
+
+  const tags = tagsValue
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  const normalizedTags = tags.map((tag) => tag.toLocaleLowerCase(locale));
+  const normalizedCurrentTag = currentTag?.toLocaleLowerCase(locale) ?? null;
+  const normalizedNextTag = nextTag?.toLocaleLowerCase(locale) ?? null;
+
+  if (normalizedCurrentTag && normalizedNextTag && normalizedCurrentTag !== normalizedNextTag) {
+    const currentIndex = normalizedTags.indexOf(normalizedCurrentTag);
+    const nextIndex = normalizedTags.indexOf(normalizedNextTag);
+
+    if (currentIndex !== -1) {
+      if (nextIndex !== -1) {
+        tags.splice(currentIndex, 1);
+      } else {
+        tags[currentIndex] = nextTag ?? tags[currentIndex];
+      }
+
+      return tags.join(", ");
+    }
+  }
+
+  if (normalizedNextTag && !normalizedTags.includes(normalizedNextTag)) {
+    tags.push(nextTag ?? "");
+    return tags.filter(Boolean).join(", ");
+  }
+
+  return tagsValue;
 }
 
 function getPasswordStrength(password: string) {

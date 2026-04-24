@@ -99,6 +99,7 @@ function toFormValues(entry: VaultEntry): EntryFormValues {
   return {
     id: entry.id,
     service: entry.service,
+    logoId: entry.logoId ?? "",
     username: entry.username,
     password: entry.password,
     url: entry.url,

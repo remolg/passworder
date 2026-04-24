@@ -29,6 +29,7 @@ import {
   type TranslationKey,
   useI18n,
 } from "@/lib/i18n";
+import { getLogoOption } from "@/lib/logo-catalog";
 import { getDefaultGeneratorOptions } from "@/lib/password-generator-preferences";
 import { generatePassword } from "@/lib/password-generator";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ import {
 
 const DEFAULT_QUICK_ADD_VALUES: EntryFormValues = {
   service: "",
+  logoId: "",
   username: "",
   password: "",
   url: "",
@@ -534,6 +536,7 @@ function toMutationInput(values: EntryFormValues): EntryMutationInput {
   return {
     id: values.id,
     service: values.service.trim(),
+    logoId: values.logoId.trim() || undefined,
     username: values.username.trim(),
     password: values.password,
     url: values.url.trim(),
@@ -571,7 +574,16 @@ function matchesSearch(entry: VaultEntry, searchTerm: string, language: AppLangu
     return true;
   }
 
-  const haystack = [entry.service, entry.username, entry.url, entry.notes, ...entry.tags]
+  const logo = getLogoOption(entry.logoId);
+  const haystack = [
+    entry.service,
+    logo?.label ?? "",
+    logo?.tag ?? "",
+    entry.username,
+    entry.url,
+    entry.notes,
+    ...entry.tags,
+  ]
     .join(" ")
     .trim();
 

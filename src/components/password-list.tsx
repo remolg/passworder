@@ -9,6 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { ServiceLogoBadge } from "@/components/service-logo-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
@@ -632,10 +633,10 @@ function PasswordEntryCard({
       <button
         type="button"
         onClick={onOpenDetails}
-        className="flex aspect-square min-h-[72px] shrink-0 items-center justify-center self-stretch rounded-[14px] bg-white/[0.03] text-[20px] font-semibold text-primary transition-colors hover:bg-white/[0.06]"
+        className="flex aspect-square min-h-[72px] shrink-0 self-stretch transition-colors hover:bg-white/[0.02]"
         aria-label={`${entry.service} details`}
       >
-        {getInitials(entry.service)}
+        <ServiceLogoBadge service={entry.service} logoId={entry.logoId} />
       </button>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center">
@@ -726,20 +727,6 @@ function PasswordEntryCard({
       </div>
     </div>
   );
-}
-
-function getInitials(service: string) {
-  const chunks = service
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (chunks.length === 0) {
-    return "?";
-  }
-
-  return chunks.map((chunk) => chunk[0]?.toUpperCase() ?? "").join("");
 }
 
 function maskValue(value: string) {
