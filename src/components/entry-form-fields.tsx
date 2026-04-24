@@ -164,6 +164,9 @@ export function EntryFormFields({
           onChange={(event) => onChange("tags", event.target.value)}
           placeholder={t("fields.tagsPlaceholder")}
         />
+        <p className="text-[11px] leading-5 text-muted-foreground">
+          {t("fields.tagsHint")}
+        </p>
       </FieldGroup>
     </div>
   );
