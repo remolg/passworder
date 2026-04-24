@@ -76,7 +76,7 @@ export function PasswordList({
   const dragOverlayFrameRef = useRef<number | null>(null);
   const dragOverlayTopRef = useRef(0);
   const draggedEntryIdRef = useRef<string | null>(null);
-  const previewEntryIdsRef = useRef<string[] | null>(null);
+  const skipNextLayoutAnimationRef = useRef(false);
   const displayEntriesRef = useRef<VaultEntry[]>(entries);
   const entriesRef = useRef(entries);
   const onReorderRef = useRef(onReorder);
@@ -91,7 +91,6 @@ export function PasswordList({
         null;
 
   draggedEntryIdRef.current = draggedEntryId;
-  previewEntryIdsRef.current = previewEntryIds;
   displayEntriesRef.current = displayEntries;
   entriesRef.current = entries;
   onReorderRef.current = onReorder;
@@ -124,8 +123,9 @@ export function PasswordList({
 
   useLayoutEffect(() => {
     const nextPositions = readItemPositions(itemRefs.current);
+    const shouldAnimateLayout = draggedEntryId && !skipNextLayoutAnimationRef.current;
 
-    if (draggedEntryId) {
+    if (shouldAnimateLayout) {
       for (const [entryId, nextTop] of nextPositions) {
         if (entryId === draggedEntryId) {
           continue;
@@ -161,6 +161,7 @@ export function PasswordList({
     }
 
     previousPositionsRef.current = nextPositions;
+    skipNextLayoutAnimationRef.current = false;
   }, [displayEntries, draggedEntryId]);
 
   useEffect(() => {
@@ -169,6 +170,7 @@ export function PasswordList({
     }
 
     const overlayOffsetY = dragOverlay.offsetY;
+    const overlayHeight = dragOverlay.height;
 
     function updateOverlayTop(nextTop: number) {
       dragOverlayTopRef.current = nextTop;
@@ -194,19 +196,7 @@ export function PasswordList({
       }
 
       updateOverlayTop(event.clientY - overlayOffsetY);
-
-      const nextTarget = resolveDropTarget(
-        displayEntriesRef.current,
-        itemRefs.current,
-        draggedEntryIdRef.current,
-        event.clientY,
-      );
-
-      if (!nextTarget) {
-        return;
-      }
-
-      updatePreviewOrder(nextTarget.targetId, nextTarget.placement);
+      updatePreviewOrder(event.clientY - overlayOffsetY + overlayHeight / 2);
     }
 
     function finishDrag(applyReorder: boolean) {
@@ -221,16 +211,14 @@ export function PasswordList({
       setDragOverlay(null);
 
       if (!applyReorder) {
-        previewEntryIdsRef.current = null;
         setPreviewEntryIds(null);
         return;
       }
 
       const currentOrder = entriesRef.current.map((entry) => entry.id);
-      const nextOrder = previewEntryIdsRef.current ?? currentOrder;
+      const nextOrder = displayEntriesRef.current.map((entry) => entry.id);
 
       if (!nextOrder || areOrdersEqual(currentOrder, nextOrder)) {
-        previewEntryIdsRef.current = null;
         setPreviewEntryIds(null);
         return;
       }
@@ -239,7 +227,6 @@ export function PasswordList({
         try {
           await onReorderRef.current(nextOrder);
         } finally {
-          previewEntryIdsRef.current = null;
           setPreviewEntryIds(null);
         }
       })();
@@ -312,15 +299,14 @@ export function PasswordList({
     const bounds = node.getBoundingClientRect();
     const articleNode = event.currentTarget.closest("article");
     const rowBounds = articleNode?.getBoundingClientRect() ?? bounds;
-    const currentOrder = entries.map((entry) => entry.id);
 
     activePointerIdRef.current = event.pointerId;
+    cancelItemAnimations(itemRefs.current);
+    skipNextLayoutAnimationRef.current = true;
     previousPositionsRef.current = readItemPositions(itemRefs.current);
     draggedEntryIdRef.current = entryId;
-    previewEntryIdsRef.current = currentOrder;
     dragOverlayTopRef.current = rowBounds.top;
     setDraggedEntryId(entryId);
-    setPreviewEntryIds(currentOrder);
     setDragOverlay({
       height: rowBounds.height,
       left: rowBounds.left,
@@ -330,21 +316,46 @@ export function PasswordList({
     });
   }
 
-  function updatePreviewOrder(targetId: string, placement: "before" | "after") {
+  function updatePreviewOrder(draggedMidY: number) {
     const sourceId = draggedEntryIdRef.current;
-    if (!sourceId || sourceId === targetId) {
+    if (!sourceId) {
       return;
     }
 
-    const currentOrder = previewEntryIdsRef.current ?? entriesRef.current.map((entry) => entry.id);
-    const nextOrder = reorderEntryIds(currentOrder, sourceId, targetId, placement);
+    const currentOrder = displayEntriesRef.current.map((entry) => entry.id);
+    const sourceIndex = currentOrder.indexOf(sourceId);
+    if (sourceIndex === -1) {
+      return;
+    }
+
+    let nextOrder: string[] | null = null;
+    const previousEntryId = sourceIndex > 0 ? currentOrder[sourceIndex - 1] : null;
+    const nextEntryId =
+      sourceIndex < currentOrder.length - 1 ? currentOrder[sourceIndex + 1] : null;
+
+    if (nextEntryId) {
+      const nextNode = itemRefs.current.get(nextEntryId);
+      const nextBounds = nextNode?.getBoundingClientRect();
+
+      if (nextBounds && draggedMidY >= nextBounds.top + nextBounds.height / 2) {
+        nextOrder = moveEntryId(currentOrder, sourceIndex, sourceIndex + 1);
+      }
+    }
+
+    if (!nextOrder && previousEntryId) {
+      const previousNode = itemRefs.current.get(previousEntryId);
+      const previousBounds = previousNode?.getBoundingClientRect();
+
+      if (previousBounds && draggedMidY <= previousBounds.top + previousBounds.height / 2) {
+        nextOrder = moveEntryId(currentOrder, sourceIndex, sourceIndex - 1);
+      }
+    }
 
     if (!nextOrder || areOrdersEqual(currentOrder, nextOrder)) {
       return;
     }
 
     previousPositionsRef.current = readItemPositions(itemRefs.current);
-    previewEntryIdsRef.current = nextOrder;
     setPreviewEntryIds(nextOrder);
   }
 
@@ -488,12 +499,24 @@ export function PasswordList({
 
               if (draggedEntryId === entry.id && dragOverlay) {
                 return (
-                  <article
-                    key={entry.id}
-                    aria-hidden="true"
-                    className="relative"
-                    style={{ height: dragOverlay.height }}
-                  />
+                  <article key={entry.id} aria-hidden="true" className="relative py-4">
+                    <PasswordEntryCard
+                      className="pointer-events-none opacity-0"
+                      entry={entry}
+                      dragHandleLabel={dragHandleLabel}
+                      noUsernameLabel={noUsernameLabel}
+                      onCopyPassword={() =>
+                        void handleCopy(`password:${entry.id}`, onCopyPassword, entry)
+                      }
+                      onCopyUsername={() =>
+                        void handleCopy(`username:${entry.id}`, onCopyUsername, entry)
+                      }
+                      onOpenDetails={() => onOpenDetails(entry)}
+                      passwordCopied={passwordCopied}
+                      reorderingEnabled={reorderingEnabled}
+                      usernameCopied={usernameCopied}
+                    />
+                  </article>
                 );
               }
 
@@ -746,87 +769,28 @@ function maskUsername(value: string) {
   return `${visiblePrefix}${maskedPart}${domainPart}`;
 }
 
-function resolveDropTarget(
-  entries: VaultEntry[],
-  itemRefs: Map<string, HTMLDivElement>,
-  draggedEntryId: string | null,
-  clientY: number,
-) {
-  const edgeRatio = 0.34;
-
-  if (!draggedEntryId) {
+function moveEntryId(entryIds: string[], sourceIndex: number, targetIndex: number) {
+  if (
+    sourceIndex < 0 ||
+    targetIndex < 0 ||
+    sourceIndex >= entryIds.length ||
+    targetIndex >= entryIds.length
+  ) {
     return null;
   }
 
-  const targetEntries = entries.filter((entry) => entry.id !== draggedEntryId);
-
-  if (targetEntries.length === 0) {
-    return null;
-  }
-
-  const firstNode = itemRefs.get(targetEntries[0].id);
-  if (!firstNode) {
-    return null;
-  }
-
-  const firstBounds = firstNode.getBoundingClientRect();
-  if (clientY <= firstBounds.top + firstBounds.height * edgeRatio) {
-    return {
-      targetId: targetEntries[0].id,
-      placement: "before" as const,
-    };
-  }
-
-  for (const entry of targetEntries) {
-    const node = itemRefs.get(entry.id);
-    if (!node) {
-      continue;
-    }
-
-    const bounds = node.getBoundingClientRect();
-    const beforeBoundary = bounds.top + bounds.height * edgeRatio;
-    const afterBoundary = bounds.bottom - bounds.height * edgeRatio;
-
-    if (clientY < beforeBoundary) {
-      return {
-        targetId: entry.id,
-        placement: "before" as const,
-      };
-    }
-
-    if (clientY <= afterBoundary) {
-      return null;
-    }
-  }
-
-  return {
-    targetId: targetEntries[targetEntries.length - 1].id,
-    placement: "after" as const,
-  };
-}
-
-function reorderEntryIds(
-  entryIds: string[],
-  sourceId: string,
-  targetId: string,
-  placement: "before" | "after",
-) {
-  const sourceIndex = entryIds.indexOf(sourceId);
-  const targetIndex = entryIds.indexOf(targetId);
-
-  if (sourceIndex === -1 || targetIndex === -1) {
-    return null;
+  if (sourceIndex === targetIndex) {
+    return entryIds;
   }
 
   const nextIds = entryIds.slice();
-  nextIds.splice(sourceIndex, 1);
+  const [movedEntryId] = nextIds.splice(sourceIndex, 1);
 
-  const adjustedTargetIndex =
-    sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-  const insertIndex =
-    placement === "before" ? adjustedTargetIndex : adjustedTargetIndex + 1;
+  if (!movedEntryId) {
+    return null;
+  }
 
-  nextIds.splice(insertIndex, 0, sourceId);
+  nextIds.splice(targetIndex, 0, movedEntryId);
   return nextIds;
 }
 
@@ -855,6 +819,12 @@ function readItemPositions(itemRefs: Map<string, HTMLDivElement>) {
   }
 
   return positions;
+}
+
+function cancelItemAnimations(itemRefs: Map<string, HTMLDivElement>) {
+  for (const node of itemRefs.values()) {
+    node.getAnimations().forEach((animation) => animation.cancel());
+  }
 }
 
 function areOrdersEqual(left: string[], right: string[]) {
