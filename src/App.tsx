@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 
+import { DeleteEntryDialog } from "@/components/delete-entry-dialog";
 import { EntryDetailView } from "@/components/entry-detail-view";
 import { PasswordGeneratorCard } from "@/components/password-generator-card";
 import { PasswordList } from "@/components/password-list";
@@ -102,7 +103,9 @@ function AppContent({
     DEFAULT_QUICK_ADD_VALUES,
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<VaultEntry | null>(null);
+  const [pendingDeleteEntry, setPendingDeleteEntry] = useState<VaultEntry | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("passwords");
   const [navOpen, setNavOpen] = useState(false);
 
@@ -150,6 +153,24 @@ function AppContent({
     ? resolveText(statusMessageKey)
     : undefined;
   const statusTone: "notice" | "error" = controller.error ? "error" : "notice";
+  const availableTags = controller.payload
+    ? collectAvailableTags(controller.payload.entries, language)
+    : [];
+
+  useEffect(() => {
+    if (!selectedTag) {
+      return;
+    }
+
+    const normalizedSelectedTag = normalizeFilterValue(selectedTag, language);
+    const tagStillExists = availableTags.some(
+      (tag) => normalizeFilterValue(tag, language) === normalizedSelectedTag,
+    );
+
+    if (!tagStillExists) {
+      setSelectedTag(null);
+    }
+  }, [availableTags, language, selectedTag]);
 
   if (controller.loading) {
     return (
@@ -206,7 +227,7 @@ function AppContent({
   }
 
   const filteredEntries = controller.payload.entries.filter((entry) =>
-    matchesSearch(entry, searchTerm, language),
+    matchesFilters(entry, searchTerm, selectedTag, language),
   );
 
   async function handleQuickAddSubmit() {
@@ -220,18 +241,44 @@ function AppContent({
     setActiveSection("passwords");
   }
 
-  async function handleDelete(entry: VaultEntry) {
-    const confirmed = window.confirm(
-      t("dialog.deleteEntryConfirm", { service: entry.service }),
-    );
-
-    if (!confirmed) {
+  function handleTagSelect(tag: string) {
+    const normalizedTag = normalizeFilterValue(tag, language);
+    if (!normalizedTag) {
       return;
     }
 
-    await controller.deleteEntry(entry.id);
-    autoLock.touch();
+    const canonicalTag =
+      availableTags.find(
+        (candidate) => normalizeFilterValue(candidate, language) === normalizedTag,
+      ) ?? tag.trim();
+
+    setSelectedTag((current) =>
+      normalizeFilterValue(current ?? "", language) === normalizedTag ? null : canonicalTag,
+    );
+    setActiveSection("passwords");
+    setSelectedEntry(null);
+  }
+
+  function handleClearFilters() {
+    setSearchTerm("");
+    setSelectedTag(null);
+  }
+
+  function handleDeleteRequest(entry: VaultEntry) {
+    setPendingDeleteEntry(entry);
+  }
+
+  async function handleDeleteConfirm(entry: VaultEntry) {
+    setPendingDeleteEntry(null);
+    setActiveSection("passwords");
     setSelectedEntry((current) => (current?.id === entry.id ? null : current));
+
+    const success = await controller.deleteEntry(entry.id);
+    if (!success) {
+      return;
+    }
+
+    autoLock.touch();
   }
 
   async function handleSaveEdit(values: EntryFormValues) {
@@ -241,22 +288,8 @@ function AppContent({
     }
 
     autoLock.touch();
-    setSelectedEntry((current) =>
-      current
-        ? {
-            ...current,
-            service: values.service.trim(),
-            username: values.username.trim(),
-            password: values.password,
-            url: values.url.trim(),
-            notes: values.notes.trim(),
-            tags: values.tags
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
-          }
-        : current,
-    );
+    setActiveSection("passwords");
+    setSelectedEntry(null);
   }
 
   async function handleReorder(entryIds: string[]) {
@@ -411,16 +444,22 @@ function AppContent({
                     busy={controller.busy}
                     onBack={() => setSelectedEntry(null)}
                     onCopyPassword={handleCopy}
-                    onDelete={handleDelete}
+                    onDelete={handleDeleteRequest}
                     onSave={handleSaveEdit}
                   />
                 ) : (
                   <PasswordList
                     entries={filteredEntries}
+                    totalEntries={controller.payload.entries.length}
+                    availableTags={availableTags}
+                    selectedTag={selectedTag}
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
+                    onTagSelect={handleTagSelect}
+                    onClearFilters={handleClearFilters}
                     onOpenDetails={setSelectedEntry}
                     dragEnabled={supportsEntryReorder()}
+                    filterActive={Boolean(searchTerm.trim()) || Boolean(selectedTag)}
                     onReorder={handleReorder}
                     onCopyUsername={(entry) => handleCopy(entry.username)}
                     onCopyPassword={(entry) => handleCopy(entry.password)}
@@ -471,6 +510,13 @@ function AppContent({
           </div>
         </div>
       </WindowShell>
+      <DeleteEntryDialog
+        entry={pendingDeleteEntry}
+        open={Boolean(pendingDeleteEntry)}
+        busy={controller.busy}
+        onClose={() => setPendingDeleteEntry(null)}
+        onConfirm={handleDeleteConfirm}
+      />
     </>
   );
 }
@@ -490,28 +536,64 @@ function toMutationInput(values: EntryFormValues): EntryMutationInput {
   };
 }
 
-function matchesSearch(
+function matchesFilters(
   entry: VaultEntry,
   searchTerm: string,
+  selectedTag: string | null,
   language: AppLanguage,
 ) {
-  const locale = language === "tr" ? "tr-TR" : "en-US";
-  const query = searchTerm.trim().toLocaleLowerCase(locale);
+  if (!matchesSearch(entry, searchTerm, language)) {
+    return false;
+  }
+
+  if (!selectedTag) {
+    return true;
+  }
+
+  const normalizedSelectedTag = normalizeFilterValue(selectedTag, language);
+  return entry.tags.some(
+    (tag) => normalizeFilterValue(tag, language) === normalizedSelectedTag,
+  );
+}
+
+function matchesSearch(entry: VaultEntry, searchTerm: string, language: AppLanguage) {
+  const query = normalizeFilterValue(searchTerm, language);
   if (!query) {
     return true;
   }
 
-  const haystack = [
-    entry.service,
-    entry.username,
-    entry.url,
-    entry.notes,
-    ...entry.tags,
-  ]
+  const haystack = [entry.service, entry.username, entry.url, entry.notes, ...entry.tags]
     .join(" ")
-    .toLocaleLowerCase(locale);
+    .trim();
 
-  return haystack.includes(query);
+  return normalizeFilterValue(haystack, language).includes(query);
+}
+
+function collectAvailableTags(entries: VaultEntry[], language: AppLanguage) {
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const uniqueTags = new Map<string, string>();
+
+  for (const entry of entries) {
+    for (const tag of entry.tags) {
+      const trimmedTag = tag.trim();
+      const normalizedTag = normalizeFilterValue(trimmedTag, language);
+
+      if (!trimmedTag || uniqueTags.has(normalizedTag)) {
+        continue;
+      }
+
+      uniqueTags.set(normalizedTag, trimmedTag);
+    }
+  }
+
+  return Array.from(uniqueTags.values()).sort((left, right) =>
+    left.localeCompare(right, locale),
+  );
+}
+
+function normalizeFilterValue(value: string, language: AppLanguage) {
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  return value.trim().toLocaleLowerCase(locale);
 }
 
 function defaultGeneratorOptions(): PasswordGeneratorOptions {

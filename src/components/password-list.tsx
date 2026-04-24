@@ -1,5 +1,13 @@
-import { type DragEvent, useState } from "react";
-import { Check, GripVertical, KeyRound, Plus, Search, UserRound } from "lucide-react";
+import { type DragEvent, useEffect, useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  GripVertical,
+  KeyRound,
+  Plus,
+  Search,
+  UserRound,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +18,16 @@ import { VaultEntry } from "@/types/vault";
 
 interface PasswordListProps {
   entries: VaultEntry[];
+  totalEntries: number;
+  availableTags: string[];
+  selectedTag: string | null;
   searchTerm: string;
   onSearchChange: (value: string) => void;
+  onTagSelect: (tag: string) => void;
+  onClearFilters: () => void;
   onOpenDetails: (entry: VaultEntry) => void;
   dragEnabled: boolean;
+  filterActive: boolean;
   onReorder: (entryIds: string[]) => Promise<void> | void;
   onCopyUsername: (entry: VaultEntry) => Promise<boolean>;
   onCopyPassword: (entry: VaultEntry) => Promise<boolean>;
@@ -22,10 +36,16 @@ interface PasswordListProps {
 
 export function PasswordList({
   entries,
+  totalEntries,
+  availableTags,
+  selectedTag,
   searchTerm,
   onSearchChange,
+  onTagSelect,
+  onClearFilters,
   onOpenDetails,
   dragEnabled,
+  filterActive,
   onReorder,
   onCopyUsername,
   onCopyPassword,
@@ -34,11 +54,26 @@ export function PasswordList({
   const { language, t } = useI18n();
   const copyFeedback = useCopyFeedback();
   const compactTitle = language === "tr" ? "Kasa" : "Vault";
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const [tagFiltersOpen, setTagFiltersOpen] = useState(Boolean(selectedTag));
   const [draggedEntryId, setDraggedEntryId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPlacement, setDropPlacement] = useState<"before" | "after" | null>(null);
-  const reorderingEnabled =
-    dragEnabled && searchTerm.trim().length === 0 && entries.length > 1;
+  const reorderingEnabled = dragEnabled && !filterActive && entries.length > 1;
+  const showingFilteredEmptyState = filterActive && totalEntries > 0 && entries.length === 0;
+
+  useEffect(() => {
+    if (selectedTag) {
+      setTagFiltersOpen(true);
+    }
+  }, [selectedTag]);
+
+  function isTagActive(tag: string) {
+    return (
+      selectedTag?.trim().toLocaleLowerCase(locale) ===
+      tag.trim().toLocaleLowerCase(locale)
+    );
+  }
 
   async function handleCopy(
     key: string,
@@ -111,11 +146,80 @@ export function PasswordList({
             {compactTitle}
           </h2>
 
-          <Button type="button" size="sm" onClick={onCreateNew}>
-            <Plus className="h-4 w-4" />
-            {t("passwords.new")}
-          </Button>
+          <div className="flex items-center gap-2">
+            {availableTags.length > 0 || selectedTag ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setTagFiltersOpen((current) => !current)}
+                className={cn(
+                  "gap-1.5",
+                  selectedTag && "border-primary/45 bg-primary/10 text-primary hover:bg-primary/14",
+                )}
+              >
+                <span className="truncate">{t("passwords.tags")}</span>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform",
+                    tagFiltersOpen && "rotate-180",
+                  )}
+                />
+              </Button>
+            ) : null}
+
+            <Button type="button" size="sm" onClick={onCreateNew}>
+              <Plus className="h-4 w-4" />
+              {t("passwords.new")}
+            </Button>
+          </div>
         </div>
+
+        {tagFiltersOpen && (availableTags.length > 0 || selectedTag) ? (
+          <div className="mt-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="mono-label text-[10px] text-muted-foreground">
+                {t("passwords.filterByTag")}
+              </p>
+
+              {filterActive ? (
+                <button
+                  type="button"
+                  onClick={onClearFilters}
+                  className="text-[11px] font-medium text-primary transition-colors hover:text-primary/85"
+                >
+                  {t("passwords.clearFilters")}
+                </button>
+              ) : null}
+            </div>
+
+            {availableTags.length > 0 ? (
+              <div className="mt-3 max-h-[120px] overflow-y-auto pr-1">
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map((tag) => {
+                    const active = isTagActive(tag);
+
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => onTagSelect(tag)}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors",
+                          active
+                            ? "border-primary/45 bg-primary/14 text-primary"
+                            : "border-white/[0.06] bg-white/[0.03] text-muted-foreground hover:border-white/[0.12] hover:text-foreground",
+                        )}
+                      >
+                        #{tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="relative mt-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -135,15 +239,31 @@ export function PasswordList({
         {entries.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <p className="text-[15px] font-medium text-foreground">
-              {t("passwords.emptyTitle")}
+              {showingFilteredEmptyState
+                ? t("passwords.noResultsTitle")
+                : t("passwords.emptyTitle")}
             </p>
             <p className="mt-2 max-w-[220px] text-[12px] leading-6 text-muted-foreground">
-              {t("passwords.emptyDescription")}
+              {showingFilteredEmptyState
+                ? t("passwords.noResultsDescription")
+                : t("passwords.emptyDescription")}
             </p>
-            <Button type="button" size="sm" className="mt-5" onClick={onCreateNew}>
-              <Plus className="h-4 w-4" />
-              {t("passwords.createFirst")}
-            </Button>
+            {showingFilteredEmptyState ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-5"
+                onClick={onClearFilters}
+              >
+                {t("passwords.clearFilters")}
+              </Button>
+            ) : (
+              <Button type="button" size="sm" className="mt-5" onClick={onCreateNew}>
+                <Plus className="h-4 w-4" />
+                {t("passwords.createFirst")}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-white/[0.05]">
@@ -266,6 +386,7 @@ export function PasswordList({
                           )}
                         />
                       </button>
+
                     </div>
                   </div>
                 </article>
