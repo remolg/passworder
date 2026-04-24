@@ -1,8 +1,8 @@
 {
   "name": "passworder",
   "private": true,
-  "version": "0.1.0",
-  "description": "Tamamen lokal çalışan Electron tabanlı masaüstü şifre yöneticisi",
+  "version": "0.1.1",
+  "description": "Tamamen lokal ?al??an Electron tabanl? masa?st? ?ifre y?neticisi",
   "author": "Codex",
   "type": "module",
   "main": "electron/main.cjs",
@@ -71,7 +71,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "Passworder-Setup-${version}.${ext}"
+      "artifactName": "Passworder-Setup-${version}.${ext}",
+      "uninstallDisplayName": "Passworder"
     }
   }
 }
