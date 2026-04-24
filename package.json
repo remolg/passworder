@@ -2,7 +2,7 @@
   "name": "passworder",
   "private": true,
   "version": "0.1.0",
-  "description": "Tamamen lokal çalışan Electron tabanlı masaüstü şifre yöneticisi",
+  "description": "Tamamen lokal Ã§alÄ±ÅŸan Electron tabanlÄ± masaÃ¼stÃ¼ ÅŸifre yÃ¶neticisi",
   "author": "Codex",
   "type": "module",
   "main": "electron/main.cjs",
@@ -51,7 +51,8 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "build/icon.ico"
     ],
     "win": {
       "signAndEditExecutable": false,
@@ -62,7 +63,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,

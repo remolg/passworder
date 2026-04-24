@@ -1,10 +1,51 @@
 const path = require("node:path");
 
-const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  shell,
+  Tray,
+} = require("electron");
 
 const vaultService = require("./vault-service.cjs");
 
 let mainWindow = null;
+let tray = null;
+let isQuitting = false;
+
+const isHiddenLaunch = process.argv.includes("--hidden");
+
+const singleInstanceLock = app.requestSingleInstanceLock();
+
+if (!singleInstanceLock) {
+  app.quit();
+}
+
+const iconSvg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="56" fill="#0f172a"/>
+  <path d="M128 36 52 68v58c0 48 31 78 76 94 45-16 76-46 76-94V68l-76-32Z" fill="#6366f1"/>
+  <path d="M128 64 78 85v38c0 32 20 53 50 65 30-12 50-33 50-65V85l-50-21Z" fill="#111827" opacity=".85"/>
+  <circle cx="128" cy="117" r="25" fill="#e0e7ff"/>
+  <path d="M119 136h18l5 48h-28l5-48Z" fill="#e0e7ff"/>
+</svg>`;
+
+function getAppIcon() {
+  const iconPath = path.join(__dirname, "..", "build", "icon.ico");
+  const fileIcon = nativeImage.createFromPath(iconPath);
+
+  if (!fileIcon.isEmpty()) {
+    return fileIcon;
+  }
+
+  return nativeImage.createFromDataURL(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`,
+  );
+}
 
 function getVaultStoragePath() {
   return path.join(app.getPath("userData"), "vault.enc.json");
@@ -24,9 +65,11 @@ function createMainWindow() {
     maxWidth: 360,
     maxHeight: 650,
     show: false,
+    skipTaskbar: true,
     autoHideMenuBar: true,
     backgroundColor: "#000000",
     title: "Passworder",
+    icon: getAppIcon(),
     frame: false,
     resizable: false,
     maximizable: false,
@@ -57,7 +100,72 @@ function createMainWindow() {
   }
 
   mainWindow.once("ready-to-show", () => {
-    mainWindow?.show();
+    if (!isHiddenLaunch) {
+      showMainWindow();
+    }
+  });
+
+  mainWindow.on("minimize", (event) => {
+    event.preventDefault();
+    mainWindow?.hide();
+  });
+
+  mainWindow.on("close", (event) => {
+    if (isQuitting) {
+      return;
+    }
+
+    event.preventDefault();
+    mainWindow?.hide();
+  });
+}
+
+function showMainWindow() {
+  if (!mainWindow) {
+    createMainWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function createTray() {
+  if (tray) {
+    return;
+  }
+
+  tray = new Tray(getAppIcon().resize({ width: 16, height: 16 }));
+  tray.setToolTip("Passworder");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Passworder'ı aç", click: showMainWindow },
+      { label: "Gizle", click: () => mainWindow?.hide() },
+      { type: "separator" },
+      {
+        label: "Tamamen kapat",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ]),
+  );
+  tray.on("click", showMainWindow);
+}
+
+function enableAutoLaunch() {
+  if (process.defaultApp) {
+    return;
+  }
+
+  app.setLoginItemSettings({
+    openAtLogin: true,
+    args: ["--hidden"],
   });
 }
 
@@ -137,18 +245,38 @@ function registerIpcHandlers() {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
+  enableAutoLaunch();
   registerIpcHandlers();
   createMainWindow();
+  createTray();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
+    } else {
+      showMainWindow();
     }
   });
 });
 
+app.on("second-instance", () => {
+  showMainWindow();
+});
+
 app.on("window-all-closed", () => {
+  if (process.platform === "darwin" || tray) {
+    return;
+  }
+
+  if (!isQuitting) {
+    return;
+  }
+
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
 });
