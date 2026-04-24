@@ -8,7 +8,7 @@ import {
   Minus,
   Settings2,
   Shield,
-  Sparkles,
+  WandSparkles,
   X,
 } from "lucide-react";
 
@@ -59,7 +59,7 @@ const NAV_ITEMS: Array<{
 }> = [
   { id: "passwords", labelKey: "nav.passwords", icon: List },
   { id: "quick-add", labelKey: "nav.quickAdd", icon: KeyRound },
-  { id: "generator", labelKey: "nav.generator", icon: Sparkles },
+  { id: "generator", labelKey: "nav.generator", icon: WandSparkles },
   { id: "settings", labelKey: "nav.settings", icon: Settings2 },
 ];
 
@@ -442,14 +442,6 @@ function AppContent({
                 })}
               </div>
 
-              <div className="mt-auto px-2 pb-1 pt-4">
-                <p className="mono-label text-[8px] text-primary/85">
-                  {t("common.local")}
-                </p>
-                <p className="mt-2 text-[11px] font-medium text-foreground/88">
-                  {t("common.vault")}
-                </p>
-              </div>
             </aside>
 
             <div className="h-full min-h-0 overflow-hidden">
