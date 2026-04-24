@@ -3,6 +3,7 @@ import {
   EntryMutationInput,
   ExportEntriesResult,
   ImportEntriesResult,
+  MasterPasswordChangeInput,
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
@@ -18,6 +19,7 @@ export interface DesktopVaultApi {
   reorderEntries: (entryIds: string[]) => Promise<VaultPayload>;
   deleteEntry: (id: string) => Promise<VaultPayload>;
   updateSettings: (settings: VaultSettings) => Promise<VaultPayload>;
+  changeMasterPassword: (input: MasterPasswordChangeInput) => Promise<VaultPayload>;
   copyToClipboard: (value: string, clearAfterSeconds: number) => Promise<void>;
   minimizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;

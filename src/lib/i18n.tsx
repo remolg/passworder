@@ -119,6 +119,16 @@ const EN_TRANSLATIONS = {
   "settings.securityTitle": "Vault is secure",
   "settings.securityDescription":
     "All data is encrypted and decrypted on the same device.",
+  "settings.masterPasswordLabel": "Master Password",
+  "settings.masterPasswordDescription":
+    "Re-encrypt the vault with a new master password without leaving the current session.",
+  "settings.currentPasswordLabel": "Current Master Password",
+  "settings.currentPasswordPlaceholder": "Enter the current master password",
+  "settings.newPasswordLabel": "New Master Password",
+  "settings.newPasswordPlaceholder": "Use at least 3 characters",
+  "settings.confirmNewPasswordLabel": "Confirm New Password",
+  "settings.confirmNewPasswordPlaceholder": "Enter the new master password again",
+  "settings.changePassword": "Change Master Password",
   "settings.autoLockLabel": "Auto Lock",
   "settings.autoLockDescription": "Lock the vault automatically after inactivity.",
   "settings.clipboardLabel": "Clipboard Clear",
@@ -145,8 +155,10 @@ const EN_TRANSLATIONS = {
   "errors.importFileInvalid":
     "The selected file is not a valid Passworder export.",
   "errors.vaultLocked": "Vault is locked.",
+  "errors.currentPasswordRequired": "Current master password cannot be empty.",
+  "errors.newMasterPasswordRequired": "New master password cannot be empty.",
   "errors.masterPasswordTooShort":
-    "Master password must be at least 12 characters.",
+    "Master password must be at least 3 characters.",
   "errors.entryServiceRequired": "Service / site is required.",
   "errors.entryPasswordRequired": "Password is required.",
   "errors.vaultAlreadyExists": "Vault already exists.",
@@ -165,6 +177,7 @@ const EN_TRANSLATIONS = {
   "notice.entryUpdated": "Entry updated.",
   "notice.entryCreated": "New entry added.",
   "notice.entryDeleted": "Entry deleted.",
+  "notice.masterPasswordUpdated": "Master password updated.",
   "notice.exportCompleted": "Passwords exported.",
   "notice.importCompleted": "Passwords imported.",
   "notice.settingsSaved": "Vault settings saved.",
@@ -290,6 +303,16 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "settings.securityTitle": "Kasa güvenli modda",
   "settings.securityDescription":
     "Tüm veriler aynı cihaz üzerinde şifrelenir ve çözülür.",
+  "settings.masterPasswordLabel": "Master Password",
+  "settings.masterPasswordDescription":
+    "Kasayı oturumu kapatmadan yeni bir master password ile yeniden şifreleyin.",
+  "settings.currentPasswordLabel": "Mevcut Master Password",
+  "settings.currentPasswordPlaceholder": "Mevcut master password girin",
+  "settings.newPasswordLabel": "Yeni Master Password",
+  "settings.newPasswordPlaceholder": "En az 3 karakter kullanın",
+  "settings.confirmNewPasswordLabel": "Yeni Şifre Tekrar",
+  "settings.confirmNewPasswordPlaceholder": "Yeni master password tekrar girin",
+  "settings.changePassword": "Master Password Değiştir",
   "settings.autoLockLabel": "Otomatik Kilit",
   "settings.autoLockDescription": "Kasa pasif kaldığında otomatik kilitlensin.",
   "settings.clipboardLabel": "Pano Temizleme",
@@ -316,8 +339,10 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "errors.importFileInvalid":
     "Seçilen dosya geçerli bir Passworder aktarım dosyası değil.",
   "errors.vaultLocked": "Kasa kilitli.",
+  "errors.currentPasswordRequired": "Mevcut master password boş bırakılamaz.",
+  "errors.newMasterPasswordRequired": "Yeni master password boş bırakılamaz.",
   "errors.masterPasswordTooShort":
-    "Master password en az 12 karakter olmalı.",
+    "Master password en az 3 karakter olmalı.",
   "errors.entryServiceRequired": "Servis / site alanı zorunlu.",
   "errors.entryPasswordRequired": "Şifre alanı zorunlu.",
   "errors.vaultAlreadyExists": "Kasa zaten mevcut.",
@@ -336,6 +361,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "notice.entryUpdated": "Kayıt güncellendi.",
   "notice.entryCreated": "Yeni kayıt eklendi.",
   "notice.entryDeleted": "Kayıt silindi.",
+  "notice.masterPasswordUpdated": "Master password güncellendi.",
   "notice.exportCompleted": "Şifreler dışa aktarıldı.",
   "notice.importCompleted": "Şifreler içe aktarıldı.",
   "notice.settingsSaved": "Kasa ayarları kaydedildi.",

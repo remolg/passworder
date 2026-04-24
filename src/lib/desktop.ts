@@ -3,6 +3,7 @@ import {
   EntryMutationInput,
   ExportEntriesResult,
   ImportEntriesResult,
+  MasterPasswordChangeInput,
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
@@ -62,6 +63,9 @@ export const vaultApi = {
   },
   async updateSettings(settings: VaultSettings) {
     return getDesktopApi().updateSettings(settings) as Promise<VaultPayload>;
+  },
+  async changeMasterPassword(input: MasterPasswordChangeInput) {
+    return getDesktopApi().changeMasterPassword(input) as Promise<VaultPayload>;
   },
   async copyToClipboard(value: string, clearAfterSeconds: number) {
     return getDesktopApi().copyToClipboard(value, clearAfterSeconds);

@@ -61,6 +61,11 @@ export interface EntryMutationInput {
   tags: string[];
 }
 
+export interface MasterPasswordChangeInput {
+  currentPassword: string;
+  nextPassword: string;
+}
+
 export interface PasswordGeneratorOptions {
   length: number;
   uppercase: boolean;

@@ -13,9 +13,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useI18n } from "@/lib/i18n";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { type TranslationKey, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { VaultSettings } from "@/types/vault";
+
+const MIN_MASTER_PASSWORD_LENGTH = 3;
 
 interface VaultSettingsCardProps {
   busy?: boolean;
@@ -24,6 +28,10 @@ interface VaultSettingsCardProps {
   onExport?: () => void | Promise<unknown>;
   onImport?: () => void | Promise<unknown>;
   onLockNow?: () => void | Promise<void>;
+  onChangeMasterPassword?: (
+    currentPassword: string,
+    nextPassword: string,
+  ) => Promise<boolean> | boolean;
   onChange: (settings: VaultSettings) => void;
 }
 
@@ -34,10 +42,15 @@ export function VaultSettingsCard({
   onExport,
   onImport,
   onLockNow,
+  onChangeMasterPassword,
   onChange,
 }: VaultSettingsCardProps) {
   const { language, t } = useI18n();
   const compactTitle = language === "tr" ? "Ayarlar" : "Settings";
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<TranslationKey | null>(null);
   const autoLockOptions = useMemo(
     () =>
       [1, 3, 5, 10, 15, 30].map((minutes) => ({
@@ -61,6 +74,40 @@ export function VaultSettingsCard({
     ],
     [t],
   );
+
+  async function handleMasterPasswordSubmit() {
+    setPasswordError(null);
+
+    if (!currentPassword.trim()) {
+      setPasswordError("errors.currentPasswordRequired");
+      return;
+    }
+
+    if (!nextPassword.trim()) {
+      setPasswordError("errors.newMasterPasswordRequired");
+      return;
+    }
+
+    if (nextPassword.length < MIN_MASTER_PASSWORD_LENGTH) {
+      setPasswordError("errors.masterPasswordTooShort");
+      return;
+    }
+
+    if (nextPassword !== confirmPassword) {
+      setPasswordError("errors.masterPasswordMismatch");
+      return;
+    }
+
+    const success = await onChangeMasterPassword?.(currentPassword, nextPassword);
+    if (!success) {
+      return;
+    }
+
+    setCurrentPassword("");
+    setNextPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+  }
 
   return (
     <section className="flex h-full flex-col overflow-hidden">
@@ -121,6 +168,83 @@ export function VaultSettingsCard({
               }
             />
           </SettingRow>
+        </div>
+
+        <div className="mt-6 h-px bg-white/[0.05]" />
+
+        <div className="pt-5">
+          <div className="flex items-center gap-2">
+            <LockKeyhole className="h-4 w-4 text-primary" />
+            <p className="mono-label text-[10px] text-muted-foreground">
+              {t("settings.masterPasswordLabel")}
+            </p>
+          </div>
+          <p className="mt-3 text-[12px] leading-6 text-foreground/88">
+            {t("settings.masterPasswordDescription")}
+          </p>
+
+          <form
+            className="mt-4 space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleMasterPasswordSubmit();
+            }}
+          >
+            <PasswordField
+              id="settings-current-password"
+              label={t("settings.currentPasswordLabel")}
+              value={currentPassword}
+              placeholder={t("settings.currentPasswordPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setCurrentPassword(value);
+                if (passwordError) {
+                  setPasswordError(null);
+                }
+              }}
+            />
+
+            <PasswordField
+              id="settings-new-password"
+              label={t("settings.newPasswordLabel")}
+              value={nextPassword}
+              placeholder={t("settings.newPasswordPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setNextPassword(value);
+                if (passwordError) {
+                  setPasswordError(null);
+                }
+              }}
+            />
+
+            <PasswordField
+              id="settings-confirm-password"
+              label={t("settings.confirmNewPasswordLabel")}
+              value={confirmPassword}
+              placeholder={t("settings.confirmNewPasswordPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setConfirmPassword(value);
+                if (passwordError) {
+                  setPasswordError(null);
+                }
+              }}
+            />
+
+            {passwordError ? (
+              <p className="text-[12px] text-destructive">{t(passwordError)}</p>
+            ) : null}
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={busy || !onChangeMasterPassword}
+            >
+              <LockKeyhole className="h-4 w-4" />
+              {t("settings.changePassword")}
+            </Button>
+          </form>
         </div>
 
         <div className="mt-6 h-px bg-white/[0.05]" />
@@ -192,6 +316,38 @@ export function VaultSettingsCard({
         </Button>
       </div>
     </section>
+  );
+}
+
+function PasswordField({
+  disabled,
+  id,
+  label,
+  onChange,
+  placeholder,
+  value,
+}: {
+  disabled?: boolean;
+  id: string;
+  label: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="mono-label text-[10px] text-muted-foreground">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="password"
+        value={value}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
   );
 }
 

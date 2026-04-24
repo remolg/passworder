@@ -118,6 +118,9 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:update-settings", async (_event, settings) =>
     vaultService.updateSettings(getVaultStoragePath(), settings),
   );
+  ipcMain.handle("vault:change-master-password", async (_event, input) =>
+    vaultService.changeMasterPassword(getVaultStoragePath(), input),
+  );
   ipcMain.handle("vault:copy-to-clipboard", async (_event, value, clearAfterSeconds) =>
     vaultService.copyToClipboard(value, clearAfterSeconds),
   );

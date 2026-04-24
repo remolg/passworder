@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("passworder", {
   reorderEntries: (entryIds) => ipcRenderer.invoke("vault:reorder-entries", entryIds),
   deleteEntry: (id) => ipcRenderer.invoke("vault:delete-entry", id),
   updateSettings: (settings) => ipcRenderer.invoke("vault:update-settings", settings),
+  changeMasterPassword: (input) => ipcRenderer.invoke("vault:change-master-password", input),
   copyToClipboard: (value, clearAfterSeconds) =>
     ipcRenderer.invoke("vault:copy-to-clipboard", value, clearAfterSeconds),
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),

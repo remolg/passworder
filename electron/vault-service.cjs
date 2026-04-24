@@ -15,6 +15,7 @@ const KEY_LENGTH = 32;
 const NONCE_LENGTH = 12;
 const EXPORT_TYPE = "passworder.entries.export";
 const EXPORT_VERSION = 1;
+const MIN_MASTER_PASSWORD_LENGTH = 3;
 
 let session = null;
 
@@ -175,8 +176,17 @@ function cloneEntry(entry) {
 }
 
 function validateMasterPassword(masterPassword) {
-  if (!masterPassword || masterPassword.trim().length < 12) {
+  if (!masterPassword || masterPassword.trim().length < MIN_MASTER_PASSWORD_LENGTH) {
     throw new Error("errors.masterPasswordTooShort");
+  }
+}
+
+function verifyMasterPassword(key, verificationBlob) {
+  try {
+    const verification = decryptBytes(key, verificationBlob);
+    return crypto.timingSafeEqual(verification, VERIFY_TOKEN);
+  } catch {
+    return false;
   }
 }
 
@@ -340,12 +350,7 @@ async function unlockVault(storagePath, masterPassword) {
   const vaultFile = await readVaultFile(storagePath);
   const key = deriveKey(masterPassword, vaultFile.kdf);
 
-  try {
-    const verification = decryptBytes(key, vaultFile.verification);
-    if (!crypto.timingSafeEqual(verification, VERIFY_TOKEN)) {
-      throw new Error("errors.masterPasswordInvalid");
-    }
-  } catch {
+  if (!verifyMasterPassword(key, vaultFile.verification)) {
     key.fill(0);
     throw new Error("errors.masterPasswordInvalid");
   }
@@ -462,6 +467,51 @@ async function updateSettings(storagePath, settings) {
   return currentSession.payload;
 }
 
+async function changeMasterPassword(storagePath, input) {
+  const currentPassword =
+    typeof input?.currentPassword === "string" ? input.currentPassword : "";
+  const nextPassword = typeof input?.nextPassword === "string" ? input.nextPassword : "";
+
+  if (!currentPassword.trim()) {
+    throw new Error("errors.currentPasswordRequired");
+  }
+
+  if (!nextPassword.trim()) {
+    throw new Error("errors.newMasterPasswordRequired");
+  }
+
+  validateMasterPassword(nextPassword);
+
+  const currentSession = ensureUnlockedSession();
+  const vaultFile = await readVaultFile(storagePath);
+  const currentKey = deriveKey(currentPassword, vaultFile.kdf);
+
+  if (!verifyMasterPassword(currentKey, vaultFile.verification)) {
+    currentKey.fill(0);
+    throw new Error("errors.masterPasswordInvalid");
+  }
+
+  currentSession.payload.updatedAt = isoNow();
+  currentSession.payload.settings = normalizeSettings(currentSession.payload.settings);
+
+  const nextKdf = createKdfConfig();
+  const nextKey = deriveKey(nextPassword, nextKdf);
+
+  vaultFile.kdf = nextKdf;
+  vaultFile.verification = encryptBytes(nextKey, VERIFY_TOKEN);
+  vaultFile.vault = encryptJson(nextKey, currentSession.payload);
+  vaultFile.updatedAt = currentSession.payload.updatedAt;
+
+  await writeVaultFile(storagePath, vaultFile);
+
+  currentKey.fill(0);
+  clearSession();
+  session = createSession(nextKey, currentSession.payload);
+  nextKey.fill(0);
+
+  return currentSession.payload;
+}
+
 async function copyToClipboard(value, clearAfterSeconds) {
   clipboard.writeText(value);
 
@@ -485,5 +535,6 @@ module.exports = {
   reorderEntries,
   deleteEntry,
   updateSettings,
+  changeMasterPassword,
   copyToClipboard,
 };

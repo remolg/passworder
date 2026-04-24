@@ -4,6 +4,7 @@ import { isDesktopRuntime, vaultApi } from "@/lib/desktop";
 import {
   AppStatus,
   EntryMutationInput,
+  MasterPasswordChangeInput,
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
@@ -238,6 +239,20 @@ export function useVaultController() {
     return true;
   }
 
+  async function changeMasterPassword(input: MasterPasswordChangeInput) {
+    const nextPayload = await runMutation(
+      () => vaultApi.changeMasterPassword(input),
+      "notice.masterPasswordUpdated",
+    );
+
+    if (!nextPayload) {
+      return false;
+    }
+
+    setPayload(nextPayload);
+    return true;
+  }
+
   async function copyToClipboard(value: string) {
     const clearAfterSeconds = payload?.settings.clipboardClearSeconds ?? 30;
     const result = await runMutation(
@@ -270,6 +285,7 @@ export function useVaultController() {
     reorderEntries,
     deleteEntry,
     updateSettings,
+    changeMasterPassword,
     copyToClipboard,
   };
 }

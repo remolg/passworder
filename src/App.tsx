@@ -315,6 +315,22 @@ function AppContent({
     autoLock.touch();
   }
 
+  async function handleMasterPasswordChange(
+    currentPassword: string,
+    nextPassword: string,
+  ) {
+    const success = await controller.changeMasterPassword({
+      currentPassword,
+      nextPassword,
+    });
+
+    if (success) {
+      autoLock.touch();
+    }
+
+    return success;
+  }
+
   function applyGeneratedPassword(password: string) {
     setQuickAddValues((current) => ({
       ...current,
@@ -504,6 +520,7 @@ function AppContent({
                   onImport={controller.importEntries}
                   onLockNow={handleManualLock}
                   onChange={handleSettingsChange}
+                  onChangeMasterPassword={handleMasterPasswordChange}
                 />
               ) : null}
             </div>
