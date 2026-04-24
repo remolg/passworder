@@ -168,24 +168,6 @@ export function useVaultController() {
   }
 
   async function reorderEntries(entryIds: string[]) {
-    const previousPayload = payload;
-
-    if (previousPayload) {
-      const entriesById = new Map(
-        previousPayload.entries.map((entry) => [entry.id, entry]),
-      );
-      const nextEntries = entryIds
-        .map((entryId) => entriesById.get(entryId))
-        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
-
-      if (nextEntries.length === previousPayload.entries.length) {
-        setPayload({
-          ...previousPayload,
-          entries: nextEntries,
-        });
-      }
-    }
-
     const nextPayload = await runMutation(
       () => vaultApi.reorderEntries(entryIds),
       undefined,
@@ -193,9 +175,6 @@ export function useVaultController() {
     );
 
     if (!nextPayload) {
-      if (previousPayload) {
-        setPayload(previousPayload);
-      }
       return false;
     }
 

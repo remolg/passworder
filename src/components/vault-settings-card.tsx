@@ -358,15 +358,13 @@ function TransferActionCard({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex w-full items-start gap-3 rounded-[16px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 text-left transition-colors hover:border-primary/25 hover:bg-white/[0.045] disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex min-h-[44px] w-full items-center gap-3 rounded-[12px] px-3 text-left text-foreground/88 transition-[background-color,color] duration-150 hover:bg-white/[0.04] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-primary/12 text-primary shadow-[inset_0_0_0_1px_rgba(99,102,241,0.12)]">
+      <div className="flex h-5 w-5 shrink-0 items-center justify-center text-primary">
         {icon}
       </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-medium text-foreground">{title}</p>
-      </div>
+      <p className="text-[14px] font-medium text-foreground">{title}</p>
     </button>
   );
 }

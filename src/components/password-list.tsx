@@ -58,9 +58,12 @@ export function PasswordList({
   const [tagFiltersOpen, setTagFiltersOpen] = useState(Boolean(selectedTag));
   const [draggedEntryId, setDraggedEntryId] = useState<string | null>(null);
   const [previewEntryIds, setPreviewEntryIds] = useState<string[] | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPlacement, setDropPlacement] = useState<"before" | "after" | null>(null);
   const itemRefs = useRef(new Map<string, HTMLElement>());
   const previousPositionsRef = useRef(new Map<string, number>());
-  const didDropRef = useRef(false);
+  const isDroppingRef = useRef(false);
+  const dragPreviewRef = useRef<HTMLCanvasElement | null>(null);
   const reorderingEnabled = dragEnabled && !filterActive && entries.length > 1;
   const showingFilteredEmptyState = filterActive && totalEntries > 0 && entries.length === 0;
   const displayEntries = sortEntries(entries, previewEntryIds);
@@ -72,37 +75,31 @@ export function PasswordList({
   }, [selectedTag]);
 
   useLayoutEffect(() => {
-    const nextPositions = new Map<string, number>();
+    const nextPositions = readItemPositions(itemRefs.current);
 
-    for (const entry of displayEntries) {
-      const node = itemRefs.current.get(entry.id);
-      if (!node) {
-        continue;
+    if (draggedEntryId) {
+      for (const [entryId, nextTop] of nextPositions) {
+        const previousTop = previousPositionsRef.current.get(entryId);
+        if (previousTop === undefined) {
+          continue;
+        }
+
+        const deltaY = previousTop - nextTop;
+        if (Math.abs(deltaY) < 1) {
+          continue;
+        }
+
+        itemRefs.current.get(entryId)?.animate(
+          [
+            { transform: `translateY(${deltaY}px)` },
+            { transform: "translateY(0)" },
+          ],
+          {
+            duration: 160,
+            easing: "cubic-bezier(0.22,1,0.36,1)",
+          },
+        );
       }
-
-      const nextTop = node.getBoundingClientRect().top;
-      nextPositions.set(entry.id, nextTop);
-
-      const previousTop = previousPositionsRef.current.get(entry.id);
-      if (previousTop === undefined) {
-        continue;
-      }
-
-      const deltaY = previousTop - nextTop;
-      if (!draggedEntryId || Math.abs(deltaY) < 1) {
-        continue;
-      }
-
-      node.animate(
-        [
-          { transform: `translateY(${deltaY}px)` },
-          { transform: "translateY(0)" },
-        ],
-        {
-          duration: 150,
-          easing: "cubic-bezier(0.22,1,0.36,1)",
-        },
-      );
     }
 
     previousPositionsRef.current = nextPositions;
@@ -131,9 +128,23 @@ export function PasswordList({
       return;
     }
 
-    didDropRef.current = false;
+    previousPositionsRef.current = readItemPositions(itemRefs.current);
     setDraggedEntryId(entryId);
     setPreviewEntryIds(entries.map((entry) => entry.id));
+    setDropTargetId(null);
+    setDropPlacement(null);
+
+    if (typeof document !== "undefined") {
+      if (!dragPreviewRef.current) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        dragPreviewRef.current = canvas;
+      }
+
+      event.dataTransfer.setDragImage(dragPreviewRef.current, 0, 0);
+    }
+
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", entryId);
   }
@@ -156,38 +167,45 @@ export function PasswordList({
     );
 
     if (nextOrder && !areOrdersEqual(currentOrder, nextOrder)) {
+      previousPositionsRef.current = readItemPositions(itemRefs.current);
       setPreviewEntryIds(nextOrder);
+    }
+
+    if (dropTargetId !== targetId) {
+      setDropTargetId(targetId);
+    }
+    if (dropPlacement !== nextPlacement) {
+      setDropPlacement(nextPlacement);
     }
     event.dataTransfer.dropEffect = "move";
   }
 
-  async function handleDrop(event: DragEvent<HTMLElement>) {
-    if (!draggedEntryId) {
+  async function handleDrop(event: DragEvent<HTMLElement>, targetId: string) {
+    if (!draggedEntryId || draggedEntryId === targetId) {
       clearDragState();
       return;
     }
 
     event.preventDefault();
-    didDropRef.current = true;
-    const nextOrder = previewEntryIds ?? entries.map((entry) => entry.id);
-    const didChange = !areOrdersEqual(
-      entries.map((entry) => entry.id),
-      nextOrder,
-    );
-    setDraggedEntryId(null);
+    isDroppingRef.current = true;
+    try {
+      const currentOrder = entries.map((entry) => entry.id);
+      const nextOrder = previewEntryIds ?? currentOrder;
 
-    if (didChange) {
-      await onReorder(nextOrder);
+      if (nextOrder && !areOrdersEqual(currentOrder, nextOrder)) {
+        await onReorder(nextOrder);
+      }
+    } finally {
+      clearDragState();
+      isDroppingRef.current = false;
     }
-
-    setPreviewEntryIds(null);
-    didDropRef.current = false;
   }
 
   function clearDragState() {
     setDraggedEntryId(null);
     setPreviewEntryIds(null);
-    didDropRef.current = false;
+    setDropTargetId(null);
+    setDropPlacement(null);
   }
 
   return (
@@ -322,6 +340,11 @@ export function PasswordList({
             {displayEntries.map((entry) => {
               const usernameCopied = copyFeedback.isCopied(`username:${entry.id}`);
               const passwordCopied = copyFeedback.isCopied(`password:${entry.id}`);
+              const showDropIndicator =
+                draggedEntryId !== null &&
+                draggedEntryId !== entry.id &&
+                dropTargetId === entry.id &&
+                dropPlacement !== null;
 
               return (
                 <article
@@ -330,18 +353,29 @@ export function PasswordList({
                   draggable={reorderingEnabled}
                   onDragStart={(event) => handleDragStart(event, entry.id)}
                   onDragOver={(event) => handleDragOver(event, entry.id)}
-                  onDrop={(event) => void handleDrop(event)}
+                  onDrop={(event) => void handleDrop(event, entry.id)}
                   onDragEnd={() => {
-                    if (!didDropRef.current) {
+                    if (!isDroppingRef.current) {
                       clearDragState();
                     }
                   }}
                 >
+                  {showDropIndicator ? (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "pointer-events-none absolute left-0 right-0 z-10 h-px bg-primary/70 shadow-[0_0_0_1px_rgba(99,102,241,0.18)]",
+                        dropPlacement === "before" ? "top-0" : "bottom-0",
+                      )}
+                    />
+                  ) : null}
+
                   <div
                     className={cn(
-                      "flex items-stretch gap-3 rounded-[16px] transition-opacity duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      "flex items-stretch gap-3 rounded-[16px] transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
                       reorderingEnabled && "cursor-grab active:cursor-grabbing",
                       draggedEntryId === entry.id && "opacity-35",
+                      draggedEntryId === entry.id && "ring-1 ring-primary/20",
                     )}
                     ref={(node) => {
                       if (node) {
@@ -351,7 +385,6 @@ export function PasswordList({
 
                       itemRefs.current.delete(entry.id);
                     }}
-                    style={{ willChange: "transform" }}
                   >
                     <button
                       type="button"
@@ -536,6 +569,16 @@ function sortEntries(entries: VaultEntry[], orderedIds: string[] | null) {
   }
 
   return orderedEntries;
+}
+
+function readItemPositions(itemRefs: Map<string, HTMLElement>) {
+  const positions = new Map<string, number>();
+
+  for (const [entryId, node] of itemRefs) {
+    positions.set(entryId, node.getBoundingClientRect().top);
+  }
+
+  return positions;
 }
 
 function areOrdersEqual(left: string[], right: string[]) {
