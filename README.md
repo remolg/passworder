@@ -1,35 +1,39 @@
-﻿# Passworder
+# PASSWORDER
 
-Passworder, şifrelerinizi tamamen lokal olarak saklayan küçük bir masaüstü şifre yöneticisidir. Uygulama Electron ile çalışır; pencere kapatıldığında arka planda sistem tepsisinde kalır ve bilgisayar açıldığında simge olarak otomatik başlar.
+**Passworder**, dijital güvenliğinizi en üst seviyeye taşımak için tasarlanmış, **gizlilik odaklı (privacy-first)** ve tamamen **çevrimdışı (offline)** çalışan modern bir masaüstü şifre yöneticisidir. Verileriniz asla buluta çıkmaz; sadece sizin cihazınızda, sizin kontrolünüzde kalır.
 
-## Özellikler
+### 🛡️ Temel Özellikler
 
-- Lokal ve şifreli kasa dosyası
-- Şifre ekleme, düzenleme, silme ve sıralama
-- Güçlü şifre üretici
-- JSON içe/dışa aktarma
-- Sistem tepsisi simgesi ve otomatik başlangıç
+**Maksimum Güvenlik ve Gizlilik**
+* **Offline-First Mimari:** Sunucu, bulut senkronizasyonu veya telemetri takibi yoktur. Tüm verileriniz yalnızca yerel cihazınızda saklanır.
+* **Askeri Düzeyde Şifreleme:** Kasa verileriniz **AES-256-GCM** algoritması ile korunur. Kasa anahtarınız ise **scrypt** kullanılarak ana şifrenizden (master password) türetilir.
+* **Bellek Güvenliği:** Kasa kilitlendiğinde hassas veriler bellekten temizlenir; veriler diskte yalnızca şifreli bir "blob" olarak tutulur.
 
-## Kurulum
+**Akıllı Otomasyon ve Araçlar**
+* **Password Studio (Şifre Üretici):** İhtiyacınıza göre uzunluk, karakter tipi ve karmaşıklık kriterlerini belirleyerek saniyeler içinde güçlü şifreler oluşturun.
+* **Otomatik Kilit (Auto Lock):** Belirlediğiniz süre boyunca işlem yapılmadığında kasa kendini otomatik olarak kilitler.
+* **Pano Temizleyici:** Kopyaladığınız şifreler, belirlediğiniz süre sonunda sistem panosundan (clipboard) otomatik olarak silinir.
 
-Geliştirme için:
+**Modern ve Kullanıcı Dostu Arayüz**
+* **Minimalist Tasarım:** Electron, React ve Tailwind CSS (shadcn/ui) ile geliştirilen, göz yormayan, profesyonel masaüstü deneyimi.
+* **Hızlı Erişim:** Şifreler arasında anlık arama yapın, tek tıkla kopyalayın veya kayıtlarınızı kolayca yönetin.
 
-```bash
-npm install
-npm run dev
-```
+### ⚙️ Teknik Detaylar
 
-Windows kurulum dosyası oluşturmak için:
+* **Framework:** Electron + React + TypeScript
+* **UI Bileşenleri:** shadcn/ui & Tailwind CSS
+* **Kripto:** Node.js Crypto (scrypt & AES-256-GCM)
+* **Veri Yapısı:** Yerel şifrelenmiş JSON tabanlı güvenli depolama.
 
-```bash
-npm run package:win
-```
+### 📞 İletişim
 
-Oluşan kurulum dosyası `release` klasörüne yazılır.
+Uygulama ile ilgili sorularınız veya iş birliği talepleriniz için bana ulaşabilirsiniz:
 
-## Kullanım
+| Platform | Bilgi / Link |
+| :--- | :--- |
+| **Discord** | remolgcum |
+| **E-posta** | sadikahmet252525@gmail.com |
+| **Geliştirici** | remolg |
 
-- `X` düğmesi uygulamayı tamamen kapatmaz, yalnızca gizler.
-- Uygulamayı tekrar açmak için sistem tepsisindeki Passworder simgesine tıklayın.
-- Tamamen kapatmak için tepsi menüsünden `Tamamen kapat` seçeneğini kullanın.
-- Kurulu uygulama Windows açılışında otomatik olarak tepsi simgesiyle başlar.
+---
+*Güvenliğiniz sizin elinizde. Passworder ile şifrelerinizi yerel ve şifreli bir kalede saklayın.*
