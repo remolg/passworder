@@ -635,8 +635,9 @@ function WindowShell({
   const { t } = useI18n();
 
   return (
-    <main className="relative flex h-screen w-screen flex-col overflow-hidden border border-white/[0.05] bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.16),transparent_58%)]" />
+    <main className="relative flex h-screen w-screen flex-col overflow-hidden border border-white/[0.05] bg-[#11182a] text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#18213c_0%,#161f38_24%,#141d34_48%,#121a2f_72%,#101827_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(99,102,241,0.10),rgba(99,102,241,0.045)_34%,transparent_72%)]" />
 
       <header className="titlebar-drag relative z-10 flex h-10 items-center justify-between border-b border-white/[0.05] bg-[#0f172a]/88 px-3 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
@@ -713,9 +714,9 @@ function StatusBar({
   const { t } = useI18n();
 
   return (
-    <footer className="flex h-8 items-center justify-between border-t border-white/[0.05] bg-[#0d1425]/72 px-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+    <footer className="relative z-10 flex h-8 items-center justify-between border-t border-white/[0.06] bg-[#11182a]/94 px-3 text-[10px] uppercase tracking-[0.14em] text-[#aeb7d8]">
       <div className="flex min-w-0 items-center gap-2 truncate">
-        <span className="h-2 w-2 rounded-full bg-primary" />
+        <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(99,102,241,0.55)]" />
         <span className="truncate">
           {locked
             ? t("status.lockedVault")
@@ -724,12 +725,12 @@ function StatusBar({
       </div>
 
       <div className="flex min-w-0 items-center justify-end">
-        <div className="relative flex h-6 w-[220px] items-center justify-end overflow-hidden">
+        <div className="relative flex h-6 max-w-[220px] items-center justify-end overflow-hidden">
           <button
             type="button"
             onClick={() => void appWindow.openExternal("https://gitgit.me/remolg")}
             className={cn(
-              "titlebar-no-drag absolute inset-0 flex items-center justify-end text-[11px] font-medium leading-none normal-case tracking-[0.04em] text-[#9fa7ff] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[#c0c1ff] motion-reduce:transition-none",
+              "titlebar-no-drag relative inline-flex h-6 items-center justify-end whitespace-nowrap px-0 text-[11px] font-medium leading-none normal-case tracking-[0.04em] text-[#9fa7ff] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[#c0c1ff] motion-reduce:transition-none",
               message
                 ? "pointer-events-none -translate-y-2 opacity-0"
                 : "translate-y-0 opacity-100",
@@ -742,7 +743,7 @@ function StatusBar({
           <span
             aria-live={tone === "error" ? "assertive" : "polite"}
             className={cn(
-              "absolute inset-0 flex items-center justify-end text-right text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              "absolute right-0 top-0 flex h-6 max-w-[220px] items-center justify-end text-right text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
               tone === "error" ? "text-destructive" : "text-[#9fa7ff]",
               message
                 ? "translate-y-0 opacity-100"

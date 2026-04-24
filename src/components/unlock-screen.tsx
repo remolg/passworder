@@ -104,9 +104,6 @@ export function UnlockScreen({
             <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
               {compactDescription}
             </p>
-            <p className="mono-label mt-2 text-[9px] tracking-[0.18em] text-muted-foreground/70">
-              v{__APP_VERSION__}
-            </p>
           </div>
 
           <div className="mt-6 space-y-3.5">
@@ -185,6 +182,10 @@ export function UnlockScreen({
             </Button>
           </div>
         </form>
+
+        <p className="mono-label mt-10 text-center text-[9px] tracking-[0.18em] text-muted-foreground/70">
+          v{__APP_VERSION__}
+        </p>
       </div>
     </section>
   );
