@@ -1,6 +1,14 @@
+
+# Project Title
+
+A brief description of what this project does and who it's for
+
 # PASSWORDER
 
 **Passworder**, dijital güvenliğinizi en üst seviyeye taşımak için tasarlanmış, **gizlilik odaklı (privacy-first)** ve tamamen **çevrimdışı (offline)** çalışan modern bir masaüstü şifre yöneticisidir. Verileriniz asla buluta çıkmaz; sadece sizin cihazınızda, sizin kontrolünüzde kalır.
+
+![Logo](/src/assets/readme/3.png)
+
 
 ### 🛡️ Temel Özellikler
 
@@ -18,12 +26,16 @@
 * **Minimalist Tasarım:** Electron, React ve Tailwind CSS (shadcn/ui) ile geliştirilen, göz yormayan, profesyonel masaüstü deneyimi.
 * **Hızlı Erişim:** Şifreler arasında anlık arama yapın, tek tıkla kopyalayın veya kayıtlarınızı kolayca yönetin.
 
+![Logo](/src/assets/readme/2.png)
+
 ### ⚙️ Teknik Detaylar
 
 * **Framework:** Electron + React + TypeScript
 * **UI Bileşenleri:** shadcn/ui & Tailwind CSS
 * **Kripto:** Node.js Crypto (scrypt & AES-256-GCM)
 * **Veri Yapısı:** Yerel şifrelenmiş JSON tabanlı güvenli depolama.
+
+![Logo](/src/assets/readme/1.png)
 
 ### 📞 İletişim
 
