@@ -58,8 +58,6 @@ export function PasswordList({
   const [tagFiltersOpen, setTagFiltersOpen] = useState(Boolean(selectedTag));
   const [draggedEntryId, setDraggedEntryId] = useState<string | null>(null);
   const [previewEntryIds, setPreviewEntryIds] = useState<string[] | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const [dropPlacement, setDropPlacement] = useState<"before" | "after" | null>(null);
   const itemRefs = useRef(new Map<string, HTMLElement>());
   const previousPositionsRef = useRef(new Map<string, number>());
   const isDroppingRef = useRef(false);
@@ -79,6 +77,10 @@ export function PasswordList({
 
     if (draggedEntryId) {
       for (const [entryId, nextTop] of nextPositions) {
+        if (entryId === draggedEntryId) {
+          continue;
+        }
+
         const previousTop = previousPositionsRef.current.get(entryId);
         if (previousTop === undefined) {
           continue;
@@ -89,7 +91,13 @@ export function PasswordList({
           continue;
         }
 
-        itemRefs.current.get(entryId)?.animate(
+        const node = itemRefs.current.get(entryId);
+        if (!node) {
+          continue;
+        }
+
+        node.getAnimations().forEach((animation) => animation.cancel());
+        node.animate(
           [
             { transform: `translateY(${deltaY}px)` },
             { transform: "translateY(0)" },
@@ -131,8 +139,6 @@ export function PasswordList({
     previousPositionsRef.current = readItemPositions(itemRefs.current);
     setDraggedEntryId(entryId);
     setPreviewEntryIds(entries.map((entry) => entry.id));
-    setDropTargetId(null);
-    setDropPlacement(null);
 
     if (typeof document !== "undefined") {
       if (!dragPreviewRef.current) {
@@ -149,15 +155,11 @@ export function PasswordList({
     event.dataTransfer.setData("text/plain", entryId);
   }
 
-  function handleDragOver(event: DragEvent<HTMLElement>, targetId: string) {
+  function updatePreviewOrder(targetId: string, nextPlacement: "before" | "after") {
     if (!draggedEntryId || draggedEntryId === targetId) {
       return;
     }
 
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const nextPlacement =
-      event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
     const currentOrder = previewEntryIds ?? entries.map((entry) => entry.id);
     const nextOrder = reorderEntryIds(
       currentOrder,
@@ -170,18 +172,32 @@ export function PasswordList({
       previousPositionsRef.current = readItemPositions(itemRefs.current);
       setPreviewEntryIds(nextOrder);
     }
-
-    if (dropTargetId !== targetId) {
-      setDropTargetId(targetId);
-    }
-    if (dropPlacement !== nextPlacement) {
-      setDropPlacement(nextPlacement);
-    }
-    event.dataTransfer.dropEffect = "move";
   }
 
-  async function handleDrop(event: DragEvent<HTMLElement>, targetId: string) {
-    if (!draggedEntryId || draggedEntryId === targetId) {
+  function handleListDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!draggedEntryId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    const nextTarget = resolveDropTarget(
+      displayEntries,
+      itemRefs.current,
+      draggedEntryId,
+      event.clientY,
+    );
+
+    if (!nextTarget) {
+      return;
+    }
+
+    updatePreviewOrder(nextTarget.targetId, nextTarget.placement);
+  }
+
+  async function handleListDrop(event: DragEvent<HTMLDivElement>) {
+    if (!draggedEntryId) {
       clearDragState();
       return;
     }
@@ -204,8 +220,6 @@ export function PasswordList({
   function clearDragState() {
     setDraggedEntryId(null);
     setPreviewEntryIds(null);
-    setDropTargetId(null);
-    setDropPlacement(null);
   }
 
   return (
@@ -305,7 +319,14 @@ export function PasswordList({
 
       <div className="mx-5 mt-3 h-px bg-white/[0.05]" />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-5 pb-5",
+          draggedEntryId && "cursor-grabbing",
+        )}
+        onDragOver={handleListDragOver}
+        onDrop={(event) => void handleListDrop(event)}
+      >
         {displayEntries.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <p className="text-[15px] font-medium text-foreground">
@@ -340,11 +361,6 @@ export function PasswordList({
             {displayEntries.map((entry) => {
               const usernameCopied = copyFeedback.isCopied(`username:${entry.id}`);
               const passwordCopied = copyFeedback.isCopied(`password:${entry.id}`);
-              const showDropIndicator =
-                draggedEntryId !== null &&
-                draggedEntryId !== entry.id &&
-                dropTargetId === entry.id &&
-                dropPlacement !== null;
 
               return (
                 <article
@@ -352,24 +368,12 @@ export function PasswordList({
                   className="relative py-4"
                   draggable={reorderingEnabled}
                   onDragStart={(event) => handleDragStart(event, entry.id)}
-                  onDragOver={(event) => handleDragOver(event, entry.id)}
-                  onDrop={(event) => void handleDrop(event, entry.id)}
                   onDragEnd={() => {
                     if (!isDroppingRef.current) {
                       clearDragState();
                     }
                   }}
                 >
-                  {showDropIndicator ? (
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "pointer-events-none absolute left-0 right-0 z-10 h-px bg-primary/70 shadow-[0_0_0_1px_rgba(99,102,241,0.18)]",
-                        dropPlacement === "before" ? "top-0" : "bottom-0",
-                      )}
-                    />
-                  ) : null}
-
                   <div
                     className={cn(
                       "flex items-stretch gap-3 rounded-[16px] transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
@@ -527,6 +531,52 @@ function maskUsername(value: string) {
   const maskedPart = "\u2022".repeat(Math.max(localPart.length - visiblePrefixLength, 2));
 
   return `${visiblePrefix}${maskedPart}${domainPart}`;
+}
+
+function resolveDropTarget(
+  entries: VaultEntry[],
+  itemRefs: Map<string, HTMLElement>,
+  draggedEntryId: string,
+  clientY: number,
+) {
+  const targetEntries = entries.filter((entry) => entry.id !== draggedEntryId);
+
+  if (targetEntries.length === 0) {
+    return null;
+  }
+
+  const firstNode = itemRefs.get(targetEntries[0].id);
+  if (!firstNode) {
+    return null;
+  }
+
+  const firstBounds = firstNode.getBoundingClientRect();
+  if (clientY <= firstBounds.top + firstBounds.height / 2) {
+    return {
+      targetId: targetEntries[0].id,
+      placement: "before" as const,
+    };
+  }
+
+  for (const entry of targetEntries) {
+    const node = itemRefs.get(entry.id);
+    if (!node) {
+      continue;
+    }
+
+    const bounds = node.getBoundingClientRect();
+    if (clientY <= bounds.bottom) {
+      return {
+        targetId: entry.id,
+        placement: clientY < bounds.top + bounds.height / 2 ? "before" as const : "after" as const,
+      };
+    }
+  }
+
+  return {
+    targetId: targetEntries[targetEntries.length - 1].id,
+    placement: "after" as const,
+  };
 }
 
 function reorderEntryIds(
