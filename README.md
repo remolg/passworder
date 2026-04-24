@@ -31,39 +31,16 @@ Windows kullanıcıları uygulamayı GitHub **Releases** bölümünden indirebil
 - Electron, React, TypeScript ve Tailwind CSS ile geliştirilmiş sade masaüstü deneyimi.
 - Hızlı arama, tek tıkla kopyalama ve kolay kayıt yönetimi.
 
-![Passworder kasa ekranı](src/assets/readme/2.png)
-
-## Geliştirici İçin Yayın Alma
-
-Windows çıktısı üretmek için:
-
-```bash
-npm install
-npm run release:win
-```
-
-Komut tamamlandığında `release/` klasöründe GitHub Release'e yüklenebilecek dosyalar oluşur:
-
-- `Passworder-Setup-0.1.0.exe`
-- `Passworder-Portable-0.1.0-win-x64.zip`
-- `latest.yml`
-
-GitHub'da yayınlamak için:
-
-1. Repo sayfasında sağ taraftaki **Releases** alanından **Create a new release** seçin.
-2. Tag alanına örnek olarak `v0.1.0` yazın.
-3. Başlığa `Passworder v0.1.0` yazın.
-4. `release/` klasöründeki `.exe`, `.zip` ve `latest.yml` dosyalarını **Assets** bölümüne sürükleyip bırakın.
-5. **Publish release** butonuna basın.
-
-![Passworder detay ekranı](src/assets/readme/1.png)
-
 ## Teknik Detaylar
 
 - **Framework:** Electron + React + TypeScript
 - **Arayüz:** Tailwind CSS
 - **Kripto:** Node.js Crypto (`scrypt`, `AES-256-GCM`)
 - **Depolama:** Yerel şifrelenmiş JSON tabanlı kasa
+
+
+![Passworder detay ekranı](src/assets/readme/1.png)
+
 
 ## İletişim
 
