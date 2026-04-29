@@ -27,6 +27,8 @@ const EN_TRANSLATIONS = {
   "status.lockedVault": "Vault locked",
   "status.updateAvailable": "Update available",
   "status.updateAvailableTitle": "New version available. Click to update.",
+  "status.downloadUpdate": "Download update",
+  "status.downloadUpdateTitle": "New version available. Click to download.",
   "dialog.deleteEntryTitle": "Delete entry?",
   "dialog.deleteEntryConfirm": "Are you sure you want to delete {service}?",
   "unlock.badgeLocked": "Vault Locked",
@@ -218,6 +220,8 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "status.lockedVault": "Kasa kilitli",
   "status.updateAvailable": "Yeni sürüm mevcut",
   "status.updateAvailableTitle": "Yeni sürüm mevcut. Güncellemek için tıkla.",
+  "status.downloadUpdate": "Yeni sürümü indir",
+  "status.downloadUpdateTitle": "Yeni sürüm mevcut. İndirmek için tıkla.",
   "dialog.deleteEntryTitle": "Kayıt silinsin mi?",
   "dialog.deleteEntryConfirm":
     "{service} kaydını silmek istediğinize emin misiniz?",

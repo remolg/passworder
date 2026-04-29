@@ -738,16 +738,29 @@ function StatusBar({
   }, []);
 
   const hasUpdate = Boolean(updateInfo?.updateAvailable);
+  const hasDownload = Boolean(updateInfo?.downloadUrl);
   const footerActionUrl = hasUpdate
-    ? updateInfo?.releaseUrl ?? "https://github.com/remolg/passworder/releases/latest"
+    ? updateInfo?.downloadUrl ??
+      updateInfo?.releaseUrl ??
+      "https://github.com/remolg/passworder/releases/latest"
     : "https://gitgit.me/remolg";
   const footerActionLabel = hasUpdate
-    ? t("status.updateAvailable")
+    ? hasDownload
+      ? t("status.downloadUpdate")
+      : t("status.updateAvailable")
     : "made by remolg";
   const footerActionTitle = hasUpdate
     ? updateInfo?.latestVersion
-      ? `${t("status.updateAvailableTitle")} (${updateInfo.latestVersion})`
-      : t("status.updateAvailableTitle")
+      ? `${
+          hasDownload
+            ? t("status.downloadUpdateTitle")
+            : t("status.updateAvailableTitle")
+        } (${updateInfo.latestVersion}${
+          updateInfo.downloadName ? `, ${updateInfo.downloadName}` : ""
+        })`
+      : hasDownload
+        ? t("status.downloadUpdateTitle")
+        : t("status.updateAvailableTitle")
     : "made by remolg";
 
   return (

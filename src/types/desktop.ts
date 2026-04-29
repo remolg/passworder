@@ -13,6 +13,8 @@ export interface AppUpdateInfo {
   currentVersion: string;
   latestVersion?: string;
   releaseUrl: string;
+  downloadUrl?: string;
+  downloadName?: string;
 }
 
 export interface DesktopVaultApi {

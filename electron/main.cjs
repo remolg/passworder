@@ -63,9 +63,10 @@ function getDefaultExportPath() {
 }
 
 function normalizeVersion(version) {
-  return String(version ?? "")
+  const value = String(version ?? "")
     .trim()
     .replace(/^v/i, "");
+  return value.match(/\d+(?:\.\d+){0,3}/)?.[0] ?? value;
 }
 
 function compareVersions(left, right) {
@@ -91,6 +92,60 @@ function compareVersions(left, right) {
 
 function isNewerVersion(latestVersion, currentVersion) {
   return compareVersions(latestVersion, currentVersion) > 0;
+}
+
+function getReleaseAssetScore(assetName) {
+  const name = String(assetName ?? "").toLocaleLowerCase("en-US");
+
+  if (
+    !name ||
+    name.endsWith(".blockmap") ||
+    name.endsWith(".yml") ||
+    name.endsWith(".yaml") ||
+    name.endsWith(".json") ||
+    name.endsWith(".txt") ||
+    name.endsWith(".sha512")
+  ) {
+    return 0;
+  }
+
+  if (process.platform === "win32") {
+    if (name.includes("setup") && name.endsWith(".exe")) {
+      return 100;
+    }
+
+    if (name.endsWith(".exe")) {
+      return 90;
+    }
+
+    if (name.includes("portable") && name.endsWith(".zip")) {
+      return 80;
+    }
+
+    if (name.endsWith(".zip")) {
+      return 70;
+    }
+
+    if (name.endsWith(".msi")) {
+      return 60;
+    }
+  }
+
+  return 0;
+}
+
+function selectReleaseAsset(assets) {
+  if (!Array.isArray(assets)) {
+    return null;
+  }
+
+  return assets
+    .map((asset) => ({
+      asset,
+      score: getReleaseAssetScore(asset?.name),
+    }))
+    .filter(({ asset, score }) => score > 0 && asset?.browser_download_url)
+    .sort((left, right) => right.score - left.score)[0]?.asset ?? null;
 }
 
 function getUnavailableUpdateInfo() {
@@ -125,6 +180,7 @@ async function getUpdateInfo() {
     const latestVersion = normalizeVersion(release?.tag_name);
     const releaseUrl =
       typeof release?.html_url === "string" ? release.html_url : UPDATE_RELEASE_URL;
+    const downloadAsset = selectReleaseAsset(release?.assets);
 
     updateInfoCache = {
       updateAvailable: Boolean(
@@ -133,6 +189,12 @@ async function getUpdateInfo() {
       currentVersion,
       latestVersion,
       releaseUrl,
+      downloadUrl:
+        typeof downloadAsset?.browser_download_url === "string"
+          ? downloadAsset.browser_download_url
+          : undefined,
+      downloadName:
+        typeof downloadAsset?.name === "string" ? downloadAsset.name : undefined,
     };
   } catch {
     updateInfoCache = getUnavailableUpdateInfo();
