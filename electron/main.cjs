@@ -65,7 +65,7 @@ function createMainWindow() {
     maxWidth: 360,
     maxHeight: 650,
     show: false,
-    skipTaskbar: true,
+    skipTaskbar: isHiddenLaunch,
     autoHideMenuBar: true,
     backgroundColor: "#000000",
     title: "Passworder",
@@ -107,7 +107,7 @@ function createMainWindow() {
 
   mainWindow.on("minimize", (event) => {
     event.preventDefault();
-    mainWindow?.hide();
+    hideMainWindow();
   });
 
   mainWindow.on("close", (event) => {
@@ -116,7 +116,7 @@ function createMainWindow() {
     }
 
     event.preventDefault();
-    mainWindow?.hide();
+    hideMainWindow();
   });
 }
 
@@ -130,8 +130,18 @@ function showMainWindow() {
     mainWindow.restore();
   }
 
+  mainWindow.setSkipTaskbar(false);
   mainWindow.show();
   mainWindow.focus();
+}
+
+function hideMainWindow() {
+  if (!mainWindow) {
+    return;
+  }
+
+  mainWindow.setSkipTaskbar(true);
+  mainWindow.hide();
 }
 
 function createTray() {
@@ -144,7 +154,7 @@ function createTray() {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: "Passworder'ı aç", click: showMainWindow },
-      { label: "Gizle", click: () => mainWindow?.hide() },
+      { label: "Gizle", click: hideMainWindow },
       { type: "separator" },
       {
         label: "Tamamen kapat",
