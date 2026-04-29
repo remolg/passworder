@@ -16,8 +16,14 @@ const vaultService = require("./vault-service.cjs");
 let mainWindow = null;
 let tray = null;
 let isQuitting = false;
+let updateInfoCache = null;
+let updateInfoCheckedAt = 0;
 
 const isHiddenLaunch = process.argv.includes("--hidden");
+const UPDATE_CHECK_URL =
+  "https://api.github.com/repos/remolg/passworder/releases/latest";
+const UPDATE_RELEASE_URL = "https://github.com/remolg/passworder/releases/latest";
+const UPDATE_CACHE_TTL_MS = 30 * 60 * 1000;
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
@@ -54,6 +60,86 @@ function getVaultStoragePath() {
 function getDefaultExportPath() {
   const date = new Date().toISOString().slice(0, 10);
   return path.join(app.getPath("documents"), `passworder-export-${date}.json`);
+}
+
+function normalizeVersion(version) {
+  return String(version ?? "")
+    .trim()
+    .replace(/^v/i, "");
+}
+
+function compareVersions(left, right) {
+  const leftParts = normalizeVersion(left).split(".");
+  const rightParts = normalizeVersion(right).split(".");
+  const length = Math.max(leftParts.length, rightParts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const leftValue = Number.parseInt(leftParts[index] ?? "0", 10) || 0;
+    const rightValue = Number.parseInt(rightParts[index] ?? "0", 10) || 0;
+
+    if (leftValue > rightValue) {
+      return 1;
+    }
+
+    if (leftValue < rightValue) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+function isNewerVersion(latestVersion, currentVersion) {
+  return compareVersions(latestVersion, currentVersion) > 0;
+}
+
+function getUnavailableUpdateInfo() {
+  return {
+    updateAvailable: false,
+    currentVersion: app.getVersion(),
+    releaseUrl: UPDATE_RELEASE_URL,
+  };
+}
+
+async function getUpdateInfo() {
+  const now = Date.now();
+  if (updateInfoCache && now - updateInfoCheckedAt < UPDATE_CACHE_TTL_MS) {
+    return updateInfoCache;
+  }
+
+  const currentVersion = app.getVersion();
+
+  try {
+    const response = await fetch(UPDATE_CHECK_URL, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "Passworder Update Check",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Update check failed: ${response.status}`);
+    }
+
+    const release = await response.json();
+    const latestVersion = normalizeVersion(release?.tag_name);
+    const releaseUrl =
+      typeof release?.html_url === "string" ? release.html_url : UPDATE_RELEASE_URL;
+
+    updateInfoCache = {
+      updateAvailable: Boolean(
+        latestVersion && isNewerVersion(latestVersion, currentVersion),
+      ),
+      currentVersion,
+      latestVersion,
+      releaseUrl,
+    };
+  } catch {
+    updateInfoCache = getUnavailableUpdateInfo();
+  }
+
+  updateInfoCheckedAt = now;
+  return updateInfoCache;
 }
 
 function createMainWindow() {
@@ -242,6 +328,7 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:copy-to-clipboard", async (_event, value, clearAfterSeconds) =>
     vaultService.copyToClipboard(value, clearAfterSeconds),
   );
+  ipcMain.handle("app:get-update-info", async () => getUpdateInfo());
   ipcMain.handle("window:minimize", async () => {
     mainWindow?.minimize();
   });

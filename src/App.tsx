@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import {
   type LucideIcon,
+  Download,
   KeyRound,
   List,
   LockKeyhole,
@@ -21,7 +22,7 @@ import { UnlockScreen } from "@/components/unlock-screen";
 import { VaultSettingsCard } from "@/components/vault-settings-card";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useVaultController } from "@/hooks/use-vault-controller";
-import { appWindow, supportsEntryReorder } from "@/lib/desktop";
+import { appUpdates, appWindow, supportsEntryReorder } from "@/lib/desktop";
 import {
   getStoredLanguage,
   I18nProvider,
@@ -41,6 +42,7 @@ import {
   VaultEntry,
   VaultSettings,
 } from "@/types/vault";
+import type { AppUpdateInfo } from "@/types/desktop";
 
 const DEFAULT_QUICK_ADD_VALUES: EntryFormValues = {
   service: "",
@@ -712,6 +714,41 @@ function StatusBar({
   tone?: "notice" | "error";
 }) {
   const { t } = useI18n();
+  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void appUpdates
+      .getInfo()
+      .then((info) => {
+        if (!cancelled) {
+          setUpdateInfo(info?.updateAvailable ? info : null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUpdateInfo(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasUpdate = Boolean(updateInfo?.updateAvailable);
+  const footerActionUrl = hasUpdate
+    ? updateInfo?.releaseUrl ?? "https://github.com/remolg/passworder/releases/latest"
+    : "https://gitgit.me/remolg";
+  const footerActionLabel = hasUpdate
+    ? t("status.updateAvailable")
+    : "made by remolg";
+  const footerActionTitle = hasUpdate
+    ? updateInfo?.latestVersion
+      ? `${t("status.updateAvailableTitle")} (${updateInfo.latestVersion})`
+      : t("status.updateAvailableTitle")
+    : "made by remolg";
 
   return (
     <footer className="relative z-10 flex h-8 items-center justify-between border-t border-white/[0.06] bg-[#11182a]/94 px-3 text-[10px] uppercase tracking-[0.14em] text-[#aeb7d8]">
@@ -728,16 +765,22 @@ function StatusBar({
         <div className="relative flex h-6 max-w-[220px] items-center justify-end overflow-hidden">
           <button
             type="button"
-            onClick={() => void appWindow.openExternal("https://gitgit.me/remolg")}
+            onClick={() => void appWindow.openExternal(footerActionUrl)}
+            aria-label={footerActionTitle}
+            title={footerActionTitle}
             className={cn(
-              "titlebar-no-drag relative inline-flex h-6 items-center justify-end whitespace-nowrap px-0 text-[11px] font-medium leading-none normal-case tracking-[0.04em] text-[#9fa7ff] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:text-[#c0c1ff] motion-reduce:transition-none",
+              "titlebar-no-drag relative inline-flex h-6 max-w-[220px] items-center justify-end gap-1.5 whitespace-nowrap text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              hasUpdate
+                ? "rounded-[8px] bg-primary/15 px-2 text-primary hover:bg-primary/20 hover:text-[#dfe2ff]"
+                : "px-0 text-[#9fa7ff] hover:text-[#c0c1ff]",
               message
                 ? "pointer-events-none -translate-y-2 opacity-0"
                 : "translate-y-0 opacity-100",
             )}
             style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
           >
-            made by remolg
+            {hasUpdate ? <Download className="h-3 w-3 shrink-0" /> : null}
+            <span className="truncate">{footerActionLabel}</span>
           </button>
 
           <span

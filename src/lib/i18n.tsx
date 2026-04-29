@@ -25,6 +25,8 @@ const EN_TRANSLATIONS = {
   "loading.title": "Preparing vault",
   "loading.description": "Verifying encrypted local session.",
   "status.lockedVault": "Vault locked",
+  "status.updateAvailable": "Update available",
+  "status.updateAvailableTitle": "New version available. Click to update.",
   "dialog.deleteEntryTitle": "Delete entry?",
   "dialog.deleteEntryConfirm": "Are you sure you want to delete {service}?",
   "unlock.badgeLocked": "Vault Locked",
@@ -214,6 +216,8 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "loading.title": "Kasa hazırlanıyor",
   "loading.description": "Şifreli lokal oturum doğrulanıyor.",
   "status.lockedVault": "Kasa kilitli",
+  "status.updateAvailable": "Yeni sürüm mevcut",
+  "status.updateAvailableTitle": "Yeni sürüm mevcut. Güncellemek için tıkla.",
   "dialog.deleteEntryTitle": "Kayıt silinsin mi?",
   "dialog.deleteEntryConfirm":
     "{service} kaydını silmek istediğinize emin misiniz?",

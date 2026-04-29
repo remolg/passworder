@@ -7,7 +7,7 @@ import {
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
-import { DesktopVaultApi } from "@/types/desktop";
+import { AppUpdateInfo, DesktopVaultApi } from "@/types/desktop";
 
 export function isDesktopRuntime() {
   return typeof window !== "undefined" && typeof window.passworder !== "undefined";
@@ -93,5 +93,16 @@ export const appWindow = {
     }
 
     await getDesktopApi().openExternalUrl(url);
+  },
+};
+
+export const appUpdates = {
+  async getInfo() {
+    const getUpdateInfo = window.passworder?.getUpdateInfo;
+    if (!getUpdateInfo) {
+      return null;
+    }
+
+    return getUpdateInfo() as Promise<AppUpdateInfo>;
   },
 };

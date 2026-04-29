@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("passworder", {
   changeMasterPassword: (input) => ipcRenderer.invoke("vault:change-master-password", input),
   copyToClipboard: (value, clearAfterSeconds) =>
     ipcRenderer.invoke("vault:copy-to-clipboard", value, clearAfterSeconds),
+  getUpdateInfo: () => ipcRenderer.invoke("app:get-update-info"),
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),
   openExternalUrl: (url) => ipcRenderer.invoke("window:open-external", url),
