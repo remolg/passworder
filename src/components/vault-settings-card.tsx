@@ -27,7 +27,6 @@ interface VaultSettingsCardProps {
   storagePath?: string;
   onExport?: () => void | Promise<unknown>;
   onImport?: () => void | Promise<unknown>;
-  onLockNow?: () => void | Promise<void>;
   onChangeMasterPassword?: (
     currentPassword: string,
     nextPassword: string,
@@ -41,7 +40,6 @@ export function VaultSettingsCard({
   storagePath,
   onExport,
   onImport,
-  onLockNow,
   onChangeMasterPassword,
   onChange,
 }: VaultSettingsCardProps) {
@@ -293,19 +291,6 @@ export function VaultSettingsCard({
         </div>
       </div>
 
-      <div className="border-t border-white/[0.05] px-5 py-4">
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full justify-start px-0 text-primary"
-          onClick={() => {
-            void onLockNow?.();
-          }}
-        >
-          <LockKeyhole className="h-4 w-4" />
-          {t("settings.lockNow")}
-        </Button>
-      </div>
     </section>
   );
 }

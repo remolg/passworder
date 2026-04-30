@@ -154,7 +154,6 @@ const EN_TRANSLATIONS = {
     "Export your vault entries to a JSON backup and import them back into Passworder later.",
   "settings.storagePathLabel": "Local Storage Path",
   "settings.storagePathFallback": "Shown at runtime.",
-  "settings.lockNow": "Lock Vault Now",
   "edit.title": "Edit Entry",
   "edit.description":
     "When changes are saved, the entry is encrypted again inside the local vault.",
@@ -349,7 +348,6 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Kasa kayıtlarını JSON yedeği olarak dışa aktarabilir ve daha sonra Passworder içine geri alabilirsiniz.",
   "settings.storagePathLabel": "Lokal Veri Yolu",
   "settings.storagePathFallback": "Çalışma zamanında gösterilecek.",
-  "settings.lockNow": "Kasayı Şimdi Kilitle",
   "edit.title": "Kaydı Düzenle",
   "edit.description":
     "Değişiklikler kaydedildiğinde kayıt lokal kasada tekrar şifrelenir.",

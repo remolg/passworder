@@ -514,7 +514,6 @@ function AppContent({
                   storagePath={controller.status.storagePath}
                   onExport={controller.exportEntries}
                   onImport={controller.importEntries}
-                  onLockNow={handleManualLock}
                   onChange={handleSettingsChange}
                   onChangeMasterPassword={handleMasterPasswordChange}
                 />

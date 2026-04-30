@@ -1,8 +1,8 @@
 {
   "name": "passworder",
   "private": true,
-  "version": "0.1.3",
-  "description": "Tamamen lokal ?al??an Electron tabanl? masa?st? ?ifre y?neticisi",
+  "version": "0.1.4",
+  "description": "Tamamen lokal çalışan Electron tabanlı masaüstü şifre yöneticisi",
   "author": "Codex",
   "type": "module",
   "main": "electron/main.cjs",
