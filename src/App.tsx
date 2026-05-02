@@ -763,7 +763,7 @@ function StatusBar({
     : "made by remolg";
 
   return (
-    <footer className="relative z-10 flex h-8 items-center justify-between border-t border-white/[0.06] bg-[#11182a]/94 px-3 text-[10px] uppercase tracking-[0.14em] text-[#aeb7d8]">
+    <footer className="relative z-10 flex h-9 items-center justify-between border-t border-white/[0.06] bg-[#11182a]/94 px-3 text-[10px] uppercase tracking-[0.14em] text-[#aeb7d8]">
       <div className="flex min-w-0 items-center gap-2 truncate">
         <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(99,102,241,0.55)]" />
         <span className="truncate">
@@ -774,14 +774,14 @@ function StatusBar({
       </div>
 
       <div className="flex min-w-0 items-center justify-end">
-        <div className="relative flex h-6 max-w-[220px] items-center justify-end overflow-hidden">
+        <div className="relative flex h-7 max-w-[220px] items-center justify-end overflow-hidden">
           <button
             type="button"
             onClick={() => void appWindow.openExternal(footerActionUrl)}
             aria-label={footerActionTitle}
             title={footerActionTitle}
             className={cn(
-              "titlebar-no-drag relative inline-flex h-6 max-w-[220px] items-center justify-end gap-1.5 whitespace-nowrap text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              "titlebar-no-drag relative inline-flex h-7 max-w-[220px] items-center justify-end gap-1.5 whitespace-nowrap text-[11px] font-medium leading-[1.2] normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
               hasUpdate
                 ? "rounded-[8px] bg-primary/15 px-2 text-primary hover:bg-primary/20 hover:text-[#dfe2ff]"
                 : "px-0 text-[#9fa7ff] hover:text-[#c0c1ff]",
@@ -798,7 +798,7 @@ function StatusBar({
           <span
             aria-live={tone === "error" ? "assertive" : "polite"}
             className={cn(
-              "absolute right-0 top-0 flex h-6 max-w-[220px] items-center justify-end text-right text-[11px] font-medium leading-none normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              "absolute right-0 top-0 flex h-7 max-w-[220px] items-center justify-end text-right text-[11px] font-medium leading-[1.2] normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
               tone === "error" ? "text-destructive" : "text-[#9fa7ff]",
               message
                 ? "translate-y-0 opacity-100"
