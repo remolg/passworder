@@ -4,10 +4,11 @@ import { ArrowLeft, LockKeyhole, Trash2 } from "lucide-react";
 import { EntryFormFields } from "@/components/entry-form-fields";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { EntryFormValues, VaultEntry } from "@/types/vault";
+import { EntryFormValues, VaultEntry, VaultFolder } from "@/types/vault";
 
 interface EntryDetailViewProps {
   entry: VaultEntry;
+  folders: VaultFolder[];
   busy: boolean;
   onBack: () => void;
   onCopyPassword?: (value: string) => Promise<boolean>;
@@ -17,6 +18,7 @@ interface EntryDetailViewProps {
 
 export function EntryDetailView({
   entry,
+  folders,
   busy,
   onBack,
   onCopyPassword,
@@ -57,6 +59,7 @@ export function EntryDetailView({
 
         <EntryFormFields
           values={values}
+          folders={folders}
           onChange={(field, value) =>
             setValues((current) => ({
               ...current,
@@ -100,6 +103,7 @@ function toFormValues(entry: VaultEntry): EntryFormValues {
     id: entry.id,
     service: entry.service,
     logoId: entry.logoId ?? "",
+    folderId: entry.folderId ?? "",
     username: entry.username,
     password: entry.password,
     url: entry.url,

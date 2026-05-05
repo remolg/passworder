@@ -1,6 +1,7 @@
 import {
   AppStatus,
   EntryMutationInput,
+  FolderMutationInput,
   ExportEntriesResult,
   ImportEntriesResult,
   MasterPasswordChangeInput,
@@ -23,6 +24,8 @@ export interface DesktopVaultApi {
   unlockVault: (masterPassword: string) => Promise<VaultPayload>;
   lockVault: () => Promise<void>;
   saveEntry: (input: EntryMutationInput) => Promise<VaultPayload>;
+  createFolder: (input: FolderMutationInput) => Promise<VaultPayload>;
+  deleteFolder: (id: string) => Promise<VaultPayload>;
   exportEntries: () => Promise<ExportEntriesResult>;
   importEntries: () => Promise<ImportEntriesResult>;
   reorderEntries: (entryIds: string[]) => Promise<VaultPayload>;

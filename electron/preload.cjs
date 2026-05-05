@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("passworder", {
   unlockVault: (masterPassword) => ipcRenderer.invoke("vault:unlock", masterPassword),
   lockVault: () => ipcRenderer.invoke("vault:lock"),
   saveEntry: (input) => ipcRenderer.invoke("vault:save-entry", input),
+  createFolder: (input) => ipcRenderer.invoke("vault:create-folder", input),
+  deleteFolder: (id) => ipcRenderer.invoke("vault:delete-folder", id),
   exportEntries: () => ipcRenderer.invoke("vault:export-entries"),
   importEntries: () => ipcRenderer.invoke("vault:import-entries"),
   reorderEntries: (entryIds) => ipcRenderer.invoke("vault:reorder-entries", entryIds),

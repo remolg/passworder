@@ -3,10 +3,11 @@ import { LockKeyhole } from "lucide-react";
 import { EntryFormFields } from "@/components/entry-form-fields";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { EntryFormValues } from "@/types/vault";
+import { EntryFormValues, VaultFolder } from "@/types/vault";
 
 interface QuickAddFormProps {
   values: EntryFormValues;
+  folders: VaultFolder[];
   busy: boolean;
   onBack: () => void;
   onChange: (field: keyof EntryFormValues, value: string) => void;
@@ -17,6 +18,7 @@ interface QuickAddFormProps {
 
 export function QuickAddForm({
   values,
+  folders,
   busy,
   onChange,
   onCopyPassword,
@@ -42,6 +44,7 @@ export function QuickAddForm({
 
         <EntryFormFields
           values={values}
+          folders={folders}
           onChange={onChange}
           onCopyPassword={onCopyPassword}
           onGeneratePassword={onGeneratePassword}

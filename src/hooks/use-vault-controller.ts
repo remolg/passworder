@@ -4,6 +4,7 @@ import { isDesktopRuntime, vaultApi } from "@/lib/desktop";
 import {
   AppStatus,
   EntryMutationInput,
+  FolderMutationInput,
   MasterPasswordChangeInput,
   VaultPayload,
   VaultSettings,
@@ -167,6 +168,34 @@ export function useVaultController() {
     return true;
   }
 
+  async function createFolder(input: FolderMutationInput) {
+    const nextPayload = await runMutation(
+      () => vaultApi.createFolder(input),
+      "notice.folderCreated",
+    );
+
+    if (!nextPayload) {
+      return false;
+    }
+
+    setPayload(nextPayload);
+    return true;
+  }
+
+  async function deleteFolder(id: string) {
+    const nextPayload = await runMutation(
+      () => vaultApi.deleteFolder(id),
+      "notice.folderDeleted",
+    );
+
+    if (!nextPayload) {
+      return false;
+    }
+
+    setPayload(nextPayload);
+    return true;
+  }
+
   async function reorderEntries(entryIds: string[]) {
     const nextPayload = await runMutation(
       () => vaultApi.reorderEntries(entryIds),
@@ -284,6 +313,8 @@ export function useVaultController() {
     importEntries,
     reorderEntries,
     deleteEntry,
+    createFolder,
+    deleteFolder,
     updateSettings,
     changeMasterPassword,
     copyToClipboard,

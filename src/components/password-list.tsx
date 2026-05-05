@@ -2,6 +2,7 @@ import { type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, use
 import {
   Check,
   ChevronDown,
+  Folder,
   GripVertical,
   KeyRound,
   Plus,
@@ -21,6 +22,7 @@ interface PasswordListProps {
   entries: VaultEntry[];
   totalEntries: number;
   availableTags: string[];
+  folderNameById: Map<string, string>;
   selectedTag: string | null;
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -47,6 +49,7 @@ export function PasswordList({
   entries,
   totalEntries,
   availableTags,
+  folderNameById,
   selectedTag,
   searchTerm,
   onSearchChange,
@@ -504,6 +507,9 @@ export function PasswordList({
                     <PasswordEntryCard
                       className="pointer-events-none opacity-0"
                       entry={entry}
+                      folderName={
+                        entry.folderId ? folderNameById.get(entry.folderId) : undefined
+                      }
                       dragHandleLabel={dragHandleLabel}
                       noUsernameLabel={noUsernameLabel}
                       onCopyPassword={() =>
@@ -525,6 +531,9 @@ export function PasswordList({
                 <article key={entry.id} className="relative py-4">
                   <PasswordEntryCard
                     entry={entry}
+                    folderName={
+                      entry.folderId ? folderNameById.get(entry.folderId) : undefined
+                    }
                     dragHandleLabel={dragHandleLabel}
                     itemRef={(node) => {
                       if (node) {
@@ -573,6 +582,11 @@ export function PasswordList({
           <article className="py-4">
             <PasswordEntryCard
               entry={draggedEntry}
+              folderName={
+                draggedEntry.folderId
+                  ? folderNameById.get(draggedEntry.folderId)
+                  : undefined
+              }
               dragHandleLabel={dragHandleLabel}
               noUsernameLabel={noUsernameLabel}
               onCopyPassword={() =>
@@ -597,6 +611,7 @@ interface PasswordEntryCardProps {
   className?: string;
   dragHandleLabel: string;
   entry: VaultEntry;
+  folderName?: string;
   itemRef?: (node: HTMLDivElement | null) => void;
   noUsernameLabel: string;
   onCopyPassword: () => void;
@@ -612,6 +627,7 @@ function PasswordEntryCard({
   className,
   dragHandleLabel,
   entry,
+  folderName,
   itemRef,
   noUsernameLabel,
   onCopyPassword,
@@ -649,6 +665,13 @@ function PasswordEntryCard({
             >
               {entry.service}
             </button>
+
+            {folderName ? (
+              <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-primary/85">
+                <Folder className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{folderName}</span>
+              </span>
+            ) : null}
 
             <button
               type="button"

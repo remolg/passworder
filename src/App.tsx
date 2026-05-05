@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import {
   type LucideIcon,
   Download,
+  Folder,
   KeyRound,
   List,
   LockKeyhole,
@@ -15,6 +16,7 @@ import {
 
 import { DeleteEntryDialog } from "@/components/delete-entry-dialog";
 import { EntryDetailView } from "@/components/entry-detail-view";
+import { FoldersPage } from "@/components/folders-page";
 import { PasswordGeneratorCard } from "@/components/password-generator-card";
 import { PasswordList } from "@/components/password-list";
 import { QuickAddForm } from "@/components/quick-add-form";
@@ -47,6 +49,7 @@ import type { AppUpdateInfo } from "@/types/desktop";
 const DEFAULT_QUICK_ADD_VALUES: EntryFormValues = {
   service: "",
   logoId: "",
+  folderId: "",
   username: "",
   password: "",
   url: "",
@@ -54,7 +57,7 @@ const DEFAULT_QUICK_ADD_VALUES: EntryFormValues = {
   tags: "",
 };
 
-type SectionId = "passwords" | "quick-add" | "generator" | "settings";
+type SectionId = "passwords" | "folders" | "quick-add" | "generator" | "settings";
 
 const NAV_ITEMS: Array<{
   id: SectionId;
@@ -62,6 +65,7 @@ const NAV_ITEMS: Array<{
   icon: LucideIcon;
 }> = [
   { id: "passwords", labelKey: "nav.passwords", icon: List },
+  { id: "folders", labelKey: "nav.folders", icon: Folder },
   { id: "quick-add", labelKey: "nav.quickAdd", icon: KeyRound },
   { id: "generator", labelKey: "nav.generator", icon: WandSparkles },
   { id: "settings", labelKey: "nav.settings", icon: Settings2 },
@@ -109,6 +113,8 @@ function AppContent({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<VaultEntry | null>(null);
+  const [entryDetailBackSection, setEntryDetailBackSection] =
+    useState<SectionId>("passwords");
   const [pendingDeleteEntry, setPendingDeleteEntry] = useState<VaultEntry | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("passwords");
   const [navOpen, setNavOpen] = useState(false);
@@ -160,6 +166,9 @@ function AppContent({
   const availableTags = controller.payload
     ? collectAvailableTags(controller.payload.entries, language)
     : [];
+  const folderNameById = new Map<string, string>(
+    controller.payload?.folders.map((folder) => [folder.id, folder.name]) ?? [],
+  );
 
   useEffect(() => {
     if (!selectedTag) {
@@ -231,7 +240,7 @@ function AppContent({
   }
 
   const filteredEntries = controller.payload.entries.filter((entry) =>
-    matchesFilters(entry, searchTerm, selectedTag, language),
+    matchesFilters(entry, searchTerm, selectedTag, language, folderNameById),
   );
 
   async function handleQuickAddSubmit() {
@@ -274,7 +283,7 @@ function AppContent({
 
   async function handleDeleteConfirm(entry: VaultEntry) {
     setPendingDeleteEntry(null);
-    setActiveSection("passwords");
+    setActiveSection(entryDetailBackSection);
     setSelectedEntry((current) => (current?.id === entry.id ? null : current));
 
     const success = await controller.deleteEntry(entry.id);
@@ -285,6 +294,44 @@ function AppContent({
     autoLock.touch();
   }
 
+  async function handleCreateFolder(name: string) {
+    const success = await controller.createFolder({ name });
+    if (success) {
+      autoLock.touch();
+    }
+
+    return success;
+  }
+
+  async function handleDeleteFolder(id: string) {
+    const success = await controller.deleteFolder(id);
+    if (success) {
+      autoLock.touch();
+    }
+
+    return success;
+  }
+
+  function handleCreateEntryInFolder(folderId: string) {
+    setQuickAddValues({
+      ...DEFAULT_QUICK_ADD_VALUES,
+      folderId,
+    });
+    setSelectedEntry(null);
+    setActiveSection("quick-add");
+  }
+
+  function handleOpenFolderEntry(entry: VaultEntry) {
+    setEntryDetailBackSection("folders");
+    setSelectedEntry(entry);
+    setActiveSection("passwords");
+  }
+
+  function handleOpenPasswordEntry(entry: VaultEntry) {
+    setEntryDetailBackSection("passwords");
+    setSelectedEntry(entry);
+  }
+
   async function handleSaveEdit(values: EntryFormValues) {
     const success = await controller.saveEntry(toMutationInput(values));
     if (!success) {
@@ -292,7 +339,7 @@ function AppContent({
     }
 
     autoLock.touch();
-    setActiveSection("passwords");
+    setActiveSection(entryDetailBackSection);
     setSelectedEntry(null);
   }
 
@@ -453,8 +500,12 @@ function AppContent({
                 selectedEntry ? (
                   <EntryDetailView
                     entry={selectedEntry}
+                    folders={controller.payload.folders}
                     busy={controller.busy}
-                    onBack={() => setSelectedEntry(null)}
+                    onBack={() => {
+                      setSelectedEntry(null);
+                      setActiveSection(entryDetailBackSection);
+                    }}
                     onCopyPassword={handleCopy}
                     onDelete={handleDeleteRequest}
                     onSave={handleSaveEdit}
@@ -464,12 +515,13 @@ function AppContent({
                     entries={filteredEntries}
                     totalEntries={controller.payload.entries.length}
                     availableTags={availableTags}
+                    folderNameById={folderNameById}
                     selectedTag={selectedTag}
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
                     onTagSelect={handleTagSelect}
                     onClearFilters={handleClearFilters}
-                    onOpenDetails={setSelectedEntry}
+                    onOpenDetails={handleOpenPasswordEntry}
                     dragEnabled={supportsEntryReorder()}
                     filterActive={Boolean(searchTerm.trim()) || Boolean(selectedTag)}
                     onReorder={handleReorder}
@@ -483,9 +535,22 @@ function AppContent({
                 )
               ) : null}
 
+              {activeSection === "folders" ? (
+                <FoldersPage
+                  folders={controller.payload.folders}
+                  entries={controller.payload.entries}
+                  busy={controller.busy}
+                  onCreateFolder={handleCreateFolder}
+                  onDeleteFolder={handleDeleteFolder}
+                  onOpenEntry={handleOpenFolderEntry}
+                  onCreateEntryInFolder={handleCreateEntryInFolder}
+                />
+              ) : null}
+
               {activeSection === "quick-add" ? (
                 <QuickAddForm
                   values={quickAddValues}
+                  folders={controller.payload.folders}
                   busy={controller.busy}
                   onBack={() => setActiveSection("passwords")}
                   onChange={(field, value) =>
@@ -538,6 +603,7 @@ function toMutationInput(values: EntryFormValues): EntryMutationInput {
     id: values.id,
     service: values.service.trim(),
     logoId: values.logoId.trim() || undefined,
+    folderId: values.folderId.trim() || undefined,
     username: values.username.trim(),
     password: values.password,
     url: values.url.trim(),
@@ -554,8 +620,9 @@ function matchesFilters(
   searchTerm: string,
   selectedTag: string | null,
   language: AppLanguage,
+  folderNameById: Map<string, string>,
 ) {
-  if (!matchesSearch(entry, searchTerm, language)) {
+  if (!matchesSearch(entry, searchTerm, language, folderNameById)) {
     return false;
   }
 
@@ -569,17 +636,24 @@ function matchesFilters(
   );
 }
 
-function matchesSearch(entry: VaultEntry, searchTerm: string, language: AppLanguage) {
+function matchesSearch(
+  entry: VaultEntry,
+  searchTerm: string,
+  language: AppLanguage,
+  folderNameById: Map<string, string>,
+) {
   const query = normalizeFilterValue(searchTerm, language);
   if (!query) {
     return true;
   }
 
   const logo = getLogoOption(entry.logoId);
+  const folderName = entry.folderId ? folderNameById.get(entry.folderId) ?? "" : "";
   const haystack = [
     entry.service,
     logo?.label ?? "",
     logo?.tag ?? "",
+    folderName,
     entry.username,
     entry.url,
     entry.notes,

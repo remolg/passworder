@@ -1,6 +1,7 @@
 import {
   AppStatus,
   EntryMutationInput,
+  FolderMutationInput,
   ExportEntriesResult,
   ImportEntriesResult,
   MasterPasswordChangeInput,
@@ -43,6 +44,12 @@ export const vaultApi = {
   },
   async saveEntry(input: EntryMutationInput) {
     return getDesktopApi().saveEntry(input) as Promise<VaultPayload>;
+  },
+  async createFolder(input: FolderMutationInput) {
+    return getDesktopApi().createFolder(input) as Promise<VaultPayload>;
+  },
+  async deleteFolder(id: string) {
+    return getDesktopApi().deleteFolder(id) as Promise<VaultPayload>;
   },
   async exportEntries() {
     return getDesktopApi().exportEntries() as Promise<ExportEntriesResult>;

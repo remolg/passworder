@@ -35,8 +35,15 @@ function normalizeSettings(settings = {}) {
 }
 
 function normalizePayload(payload) {
+  const folders = normalizeFolders(payload?.folders);
+  const folderIds = new Set(folders.map((folder) => folder.id));
+
   return {
     ...payload,
+    entries: Array.isArray(payload?.entries)
+      ? payload.entries.map((entry) => normalizeStoredEntry(entry, folderIds))
+      : [],
+    folders,
     settings: normalizeSettings(payload?.settings),
   };
 }
@@ -45,6 +52,7 @@ function createEmptyPayload() {
   const now = isoNow();
   return {
     entries: [],
+    folders: [],
     settings: normalizeSettings(DEFAULT_SETTINGS),
     createdAt: now,
     updatedAt: now,
@@ -170,11 +178,87 @@ function normalizeLogoId(logoId) {
   return trimmedLogoId || undefined;
 }
 
+function normalizeFolderName(name) {
+  return typeof name === "string" ? name.trim() : "";
+}
+
+function normalizeFolderNameKey(name) {
+  return normalizeFolderName(name).toLocaleLowerCase("tr-TR");
+}
+
+function normalizeExistingFolderId(folderId, folderIds) {
+  if (typeof folderId !== "string") {
+    return undefined;
+  }
+
+  const trimmedFolderId = folderId.trim();
+  return trimmedFolderId && folderIds.has(trimmedFolderId) ? trimmedFolderId : undefined;
+}
+
+function normalizeFolders(folders) {
+  if (!Array.isArray(folders)) {
+    return [];
+  }
+
+  const now = isoNow();
+  const usedIds = new Set();
+  const usedNames = new Set();
+  const normalizedFolders = [];
+
+  for (const folder of folders) {
+    const name = normalizeFolderName(folder?.name);
+    const nameKey = normalizeFolderNameKey(name);
+
+    if (!name || usedNames.has(nameKey)) {
+      continue;
+    }
+
+    let id = typeof folder?.id === "string" && folder.id.trim()
+      ? folder.id.trim()
+      : crypto.randomUUID();
+
+    while (usedIds.has(id)) {
+      id = crypto.randomUUID();
+    }
+
+    usedIds.add(id);
+    usedNames.add(nameKey);
+    normalizedFolders.push({
+      id,
+      name,
+      createdAt: typeof folder?.createdAt === "string" ? folder.createdAt : now,
+      updatedAt: typeof folder?.updatedAt === "string" ? folder.updatedAt : now,
+    });
+  }
+
+  return normalizedFolders;
+}
+
+function normalizeStoredEntry(entry, folderIds) {
+  const now = isoNow();
+  const folderId = normalizeExistingFolderId(entry?.folderId, folderIds);
+
+  return {
+    id: typeof entry?.id === "string" && entry.id ? entry.id : crypto.randomUUID(),
+    service: typeof entry?.service === "string" ? entry.service : "",
+    logoId: normalizeLogoId(entry?.logoId),
+    folderId,
+    username: typeof entry?.username === "string" ? entry.username : "",
+    password: typeof entry?.password === "string" ? entry.password : "",
+    url: typeof entry?.url === "string" ? entry.url : "",
+    notes: typeof entry?.notes === "string" ? entry.notes : "",
+    tags: Array.isArray(entry?.tags) ? normalizeTags(entry.tags) : [],
+    createdAt: typeof entry?.createdAt === "string" ? entry.createdAt : now,
+    updatedAt: typeof entry?.updatedAt === "string" ? entry.updatedAt : now,
+  };
+}
+
 function cloneEntry(entry) {
   return {
     id: entry.id,
     service: entry.service,
     logoId: normalizeLogoId(entry.logoId),
+    folderId: entry.folderId,
     username: entry.username,
     password: entry.password,
     url: entry.url,
@@ -182,6 +266,15 @@ function cloneEntry(entry) {
     tags: [...entry.tags],
     createdAt: entry.createdAt,
     updatedAt: entry.updatedAt,
+  };
+}
+
+function cloneFolder(folder) {
+  return {
+    id: folder.id,
+    name: folder.name,
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt,
   };
 }
 
@@ -210,6 +303,23 @@ function validateEntryInput(input) {
   }
 }
 
+function validateFolderInput(input) {
+  if (!normalizeFolderName(input?.name)) {
+    throw new Error("errors.folderNameRequired");
+  }
+}
+
+function ensureFolderNameAvailable(folders, name) {
+  const nameKey = normalizeFolderNameKey(name);
+  const nameExists = folders.some(
+    (folder) => normalizeFolderNameKey(folder.name) === nameKey,
+  );
+
+  if (nameExists) {
+    throw new Error("errors.folderNameDuplicate");
+  }
+}
+
 function validateEntryOrder(entryIds, entries) {
   if (!Array.isArray(entryIds) || entryIds.length !== entries.length) {
     throw new Error("errors.unexpected");
@@ -227,7 +337,27 @@ function validateEntryOrder(entryIds, entries) {
   }
 }
 
-function normalizeImportedEntry(entry) {
+function normalizeImportedFolder(folder) {
+  if (!folder || typeof folder !== "object") {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  const name = normalizeFolderName(folder.name);
+  if (!name) {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  const now = isoNow();
+
+  return {
+    id: typeof folder.id === "string" && folder.id ? folder.id : crypto.randomUUID(),
+    name,
+    createdAt: typeof folder.createdAt === "string" ? folder.createdAt : now,
+    updatedAt: typeof folder.updatedAt === "string" ? folder.updatedAt : now,
+  };
+}
+
+function normalizeImportedEntry(entry, folderIds) {
   if (!entry || typeof entry !== "object") {
     throw new Error("errors.importFileInvalid");
   }
@@ -245,6 +375,7 @@ function normalizeImportedEntry(entry) {
     id: typeof entry.id === "string" && entry.id ? entry.id : crypto.randomUUID(),
     service,
     logoId: normalizeLogoId(entry.logoId),
+    folderId: normalizeExistingFolderId(entry.folderId, folderIds),
     username: typeof entry.username === "string" ? entry.username.trim() : "",
     password,
     url: typeof entry.url === "string" ? entry.url.trim() : "",
@@ -272,16 +403,43 @@ function parseImportFile(fileContent) {
     throw new Error("errors.importFileInvalid");
   }
 
-  return parsed.entries.map((entry) => normalizeImportedEntry(entry));
+  const folders = Array.isArray(parsed?.folders)
+    ? normalizeFolders(parsed.folders.map((folder) => normalizeImportedFolder(folder)))
+    : [];
+  const folderIds = new Set(folders.map((folder) => folder.id));
+
+  return {
+    entries: parsed.entries.map((entry) => normalizeImportedEntry(entry, folderIds)),
+    folders,
+  };
 }
 
-function buildEntry(input, existingEntry) {
+function resolveEntryFolderId(input, existingEntry, folderIds) {
+  if (typeof input.folderId !== "string") {
+    return existingEntry?.folderId;
+  }
+
+  const folderId = input.folderId.trim();
+  if (!folderId) {
+    return undefined;
+  }
+
+  if (!folderIds.has(folderId)) {
+    throw new Error("errors.folderNotFound");
+  }
+
+  return folderId;
+}
+
+function buildEntry(input, existingEntry, folderIds) {
   const now = isoNow();
+  const folderId = resolveEntryFolderId(input, existingEntry, folderIds);
 
   return {
     id: existingEntry?.id ?? crypto.randomUUID(),
     service: input.service.trim(),
     logoId: normalizeLogoId(input.logoId),
+    folderId,
     username: input.username.trim(),
     password: input.password,
     url: input.url.trim(),
@@ -383,6 +541,8 @@ async function saveEntry(storagePath, input) {
   validateEntryInput(input);
 
   const currentSession = ensureUnlockedSession();
+  const folderIds = new Set(currentSession.payload.folders.map((folder) => folder.id));
+
   if (input.id) {
     const index = currentSession.payload.entries.findIndex((entry) => entry.id === input.id);
     if (index === -1) {
@@ -392,10 +552,55 @@ async function saveEntry(storagePath, input) {
     currentSession.payload.entries[index] = buildEntry(
       input,
       currentSession.payload.entries[index],
+      folderIds,
     );
   } else {
-    currentSession.payload.entries.unshift(buildEntry(input));
+    currentSession.payload.entries.unshift(buildEntry(input, undefined, folderIds));
   }
+
+  await persistSession(storagePath);
+  return currentSession.payload;
+}
+
+async function createFolder(storagePath, input) {
+  validateFolderInput(input);
+
+  const currentSession = ensureUnlockedSession();
+  const name = normalizeFolderName(input.name);
+  ensureFolderNameAvailable(currentSession.payload.folders, name);
+
+  const now = isoNow();
+  currentSession.payload.folders.unshift({
+    id: crypto.randomUUID(),
+    name,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await persistSession(storagePath);
+  return currentSession.payload;
+}
+
+async function deleteFolder(storagePath, id) {
+  const currentSession = ensureUnlockedSession();
+  const folderIndex = currentSession.payload.folders.findIndex(
+    (folder) => folder.id === id,
+  );
+
+  if (folderIndex === -1) {
+    throw new Error("errors.folderNotFound");
+  }
+
+  currentSession.payload.folders.splice(folderIndex, 1);
+  currentSession.payload.entries = currentSession.payload.entries.map((entry) =>
+    entry.folderId === id
+      ? {
+          ...entry,
+          folderId: undefined,
+          updatedAt: isoNow(),
+        }
+      : entry,
+  );
 
   await persistSession(storagePath);
   return currentSession.payload;
@@ -408,6 +613,7 @@ async function exportEntries(storagePath, exportPath) {
     version: EXPORT_VERSION,
     app: "Passworder",
     exportedAt: isoNow(),
+    folders: currentSession.payload.folders.map((folder) => cloneFolder(folder)),
     entries: currentSession.payload.entries.map((entry) => cloneEntry(entry)),
   };
 
@@ -417,7 +623,42 @@ async function exportEntries(storagePath, exportPath) {
 async function importEntries(storagePath, importPath) {
   const currentSession = ensureUnlockedSession();
   const fileContent = await fs.readFile(importPath, "utf8");
-  const importedEntries = parseImportFile(fileContent);
+  const importedPayload = parseImportFile(fileContent);
+  const currentFolders = currentSession.payload.folders.slice();
+  const folderIndexById = new Map(
+    currentFolders.map((folder, index) => [folder.id, index]),
+  );
+  const folderIdByName = new Map(
+    currentFolders.map((folder) => [normalizeFolderNameKey(folder.name), folder.id]),
+  );
+  const importedFolderIdMap = new Map();
+
+  for (const importedFolder of importedPayload.folders) {
+    const nameKey = normalizeFolderNameKey(importedFolder.name);
+    const existingIdForName = folderIdByName.get(nameKey);
+
+    if (existingIdForName && existingIdForName !== importedFolder.id) {
+      importedFolderIdMap.set(importedFolder.id, existingIdForName);
+      continue;
+    }
+
+    const existingIndex = folderIndexById.get(importedFolder.id);
+    if (existingIndex === undefined) {
+      currentFolders.push(importedFolder);
+      folderIndexById.set(importedFolder.id, currentFolders.length - 1);
+      folderIdByName.set(nameKey, importedFolder.id);
+    } else {
+      currentFolders[existingIndex] = importedFolder;
+      folderIdByName.set(nameKey, importedFolder.id);
+    }
+
+    importedFolderIdMap.set(importedFolder.id, importedFolder.id);
+  }
+
+  const importedEntries = importedPayload.entries.map((entry) => ({
+    ...entry,
+    folderId: entry.folderId ? importedFolderIdMap.get(entry.folderId) : undefined,
+  }));
   const currentEntries = currentSession.payload.entries.slice();
   const currentIndexById = new Map(
     currentEntries.map((entry, index) => [entry.id, index]),
@@ -435,6 +676,7 @@ async function importEntries(storagePath, importPath) {
     currentEntries[existingIndex] = importedEntry;
   }
 
+  currentSession.payload.folders = currentFolders;
   currentSession.payload.entries = currentEntries;
 
   await persistSession(storagePath);
@@ -542,6 +784,8 @@ module.exports = {
   unlockVault,
   lockVault,
   saveEntry,
+  createFolder,
+  deleteFolder,
   exportEntries,
   importEntries,
   reorderEntries,

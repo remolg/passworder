@@ -45,6 +45,7 @@ export function EditEntryDialog({
       id: entry.id,
       service: entry.service,
       logoId: entry.logoId ?? "",
+      folderId: entry.folderId ?? "",
       username: entry.username,
       password: entry.password,
       url: entry.url,
@@ -103,6 +104,7 @@ function emptyValues(): EntryFormValues {
   return {
     service: "",
     logoId: "",
+    folderId: "",
     username: "",
     password: "",
     url: "",

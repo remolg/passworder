@@ -10,6 +10,7 @@ export interface VaultEntry {
   id: string;
   service: string;
   logoId?: string;
+  folderId?: string;
   username: string;
   password: string;
   url: string;
@@ -19,8 +20,16 @@ export interface VaultEntry {
   updatedAt: string;
 }
 
+export interface VaultFolder {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface VaultPayload {
   entries: VaultEntry[];
+  folders: VaultFolder[];
   settings: VaultSettings;
   createdAt: string;
   updatedAt: string;
@@ -46,6 +55,7 @@ export interface EntryFormValues {
   id?: string;
   service: string;
   logoId: string;
+  folderId: string;
   username: string;
   password: string;
   url: string;
@@ -57,11 +67,16 @@ export interface EntryMutationInput {
   id?: string;
   service: string;
   logoId?: string;
+  folderId?: string;
   username: string;
   password: string;
   url: string;
   notes: string;
   tags: string[];
+}
+
+export interface FolderMutationInput {
+  name: string;
 }
 
 export interface MasterPasswordChangeInput {

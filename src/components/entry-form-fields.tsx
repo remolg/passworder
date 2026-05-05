@@ -1,5 +1,13 @@
 import { type ReactNode, useState } from "react";
-import { Check, ChevronDown, Copy, Eye, EyeOff, WandSparkles } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Eye,
+  EyeOff,
+  Folder,
+  WandSparkles,
+} from "lucide-react";
 
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { ServiceLogoBadge } from "@/components/service-logo-badge";
@@ -9,10 +17,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { getLogoOption, LOGO_OPTIONS } from "@/lib/logo-catalog";
 import { cn } from "@/lib/utils";
-import { EntryFormValues } from "@/types/vault";
+import { EntryFormValues, VaultFolder } from "@/types/vault";
 
 interface EntryFormFieldsProps {
   values: EntryFormValues;
+  folders?: VaultFolder[];
   onChange: (field: keyof EntryFormValues, value: string) => void;
   onCopyPassword?: (value: string) => Promise<boolean>;
   onGeneratePassword?: () => void;
@@ -20,6 +29,7 @@ interface EntryFormFieldsProps {
 
 export function EntryFormFields({
   values,
+  folders = [],
   onChange,
   onCopyPassword,
   onGeneratePassword,
@@ -141,6 +151,31 @@ export function EntryFormFields({
           ) : null}
         </div>
       </FieldGroup>
+
+      {folders.length > 0 ? (
+        <FieldGroup label={t("fields.folder")} htmlFor="folderId">
+          <div className="relative">
+            <Folder className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <select
+              id="folderId"
+              value={values.folderId}
+              onChange={(event) => onChange("folderId", event.target.value)}
+              className="flex h-10 w-full appearance-none rounded-[10px] border border-transparent bg-white/[0.04] py-2 pl-9 pr-9 text-[13px] text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">{t("fields.folderNone")}</option>
+              {folders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          <p className="text-[11px] leading-5 text-muted-foreground">
+            {t("fields.folderHint")}
+          </p>
+        </FieldGroup>
+      ) : null}
 
       <FieldGroup label={t("fields.url")} htmlFor="url">
         <Input

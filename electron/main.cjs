@@ -341,6 +341,12 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:save-entry", async (_event, input) =>
     vaultService.saveEntry(getVaultStoragePath(), input),
   );
+  ipcMain.handle("vault:create-folder", async (_event, input) =>
+    vaultService.createFolder(getVaultStoragePath(), input),
+  );
+  ipcMain.handle("vault:delete-folder", async (_event, id) =>
+    vaultService.deleteFolder(getVaultStoragePath(), id),
+  );
   ipcMain.handle("vault:export-entries", async () => {
     const result = await dialog.showSaveDialog(mainWindow ?? undefined, {
       defaultPath: getDefaultExportPath(),
