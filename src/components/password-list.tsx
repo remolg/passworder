@@ -666,13 +666,6 @@ function PasswordEntryCard({
               {entry.service}
             </button>
 
-            {folderName ? (
-              <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-primary/85">
-                <Folder className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{folderName}</span>
-              </span>
-            ) : null}
-
             <button
               type="button"
               onClick={onCopyUsername}
@@ -702,21 +695,36 @@ function PasswordEntryCard({
             </button>
           </div>
 
-          {reorderingEnabled ? (
-            onDragHandlePointerDown ? (
-              <button
-                type="button"
-                onPointerDown={onDragHandlePointerDown}
-                className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground/65 transition-colors hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
-                aria-label={dragHandleLabel}
-              >
-                <GripVertical className="h-4 w-4" />
-              </button>
-            ) : (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground/65">
-                <GripVertical className="h-4 w-4" />
-              </div>
-            )
+          {folderName || reorderingEnabled ? (
+            <div className="flex shrink-0 items-center gap-1">
+              {folderName ? (
+                <span
+                  className="flex h-8 w-8 items-center justify-center text-primary/85"
+                  role="img"
+                  aria-label={folderName}
+                  title={folderName}
+                >
+                  <Folder className="h-3.5 w-3.5" />
+                </span>
+              ) : null}
+
+              {reorderingEnabled ? (
+                onDragHandlePointerDown ? (
+                  <button
+                    type="button"
+                    onPointerDown={onDragHandlePointerDown}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground/65 transition-colors hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+                    aria-label={dragHandleLabel}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground/65">
+                    <GripVertical className="h-4 w-4" />
+                  </div>
+                )
+              ) : null}
+            </div>
           ) : null}
         </div>
 
