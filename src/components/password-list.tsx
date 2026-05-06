@@ -607,7 +607,7 @@ export function PasswordList({
   );
 }
 
-interface PasswordEntryCardProps {
+export interface PasswordEntryCardProps {
   className?: string;
   dragHandleLabel: string;
   entry: VaultEntry;
@@ -623,7 +623,7 @@ interface PasswordEntryCardProps {
   usernameCopied: boolean;
 }
 
-function PasswordEntryCard({
+export function PasswordEntryCard({
   className,
   dragHandleLabel,
   entry,

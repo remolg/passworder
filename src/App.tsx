@@ -554,6 +554,8 @@ function AppContent({
                   onDeleteFolder={handleDeleteFolder}
                   onOpenEntry={handleOpenFolderEntry}
                   onCreateEntryInFolder={handleCreateEntryInFolder}
+                  onCopyUsername={(entry) => handleCopy(entry.username)}
+                  onCopyPassword={(entry) => handleCopy(entry.password)}
                 />
               ) : null}
 

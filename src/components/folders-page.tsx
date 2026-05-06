@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Folder, KeyRound, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Folder, KeyRound, Plus, Trash2 } from "lucide-react";
 
-import { ServiceLogoBadge } from "@/components/service-logo-badge";
+import { PasswordEntryCard } from "@/components/password-list";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { useI18n } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { VaultEntry, VaultFolder } from "@/types/vault";
 
 interface FoldersPageProps {
@@ -16,6 +16,8 @@ interface FoldersPageProps {
   onDeleteFolder: (id: string) => Promise<boolean> | boolean;
   onOpenEntry: (entry: VaultEntry) => void;
   onCreateEntryInFolder: (folderId: string) => void;
+  onCopyUsername: (entry: VaultEntry) => Promise<boolean>;
+  onCopyPassword: (entry: VaultEntry) => Promise<boolean>;
 }
 
 export function FoldersPage({
@@ -26,12 +28,13 @@ export function FoldersPage({
   onDeleteFolder,
   onOpenEntry,
   onCreateEntryInFolder,
+  onCopyUsername,
+  onCopyPassword,
 }: FoldersPageProps) {
   const { t } = useI18n();
+  const copyFeedback = useCopyFeedback();
   const [newFolderName, setNewFolderName] = useState("");
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(
-    folders[0]?.id ?? null,
-  );
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   const entryCountByFolderId = useMemo(() => {
     const counts = new Map<string, number>();
@@ -47,7 +50,9 @@ export function FoldersPage({
   }, [entries]);
 
   const selectedFolder =
-    folders.find((folder) => folder.id === selectedFolderId) ?? folders[0] ?? null;
+    selectedFolderId === null
+      ? null
+      : folders.find((folder) => folder.id === selectedFolderId) ?? null;
   const folderEntries = selectedFolder
     ? entries.filter((entry) => entry.folderId === selectedFolder.id)
     : [];
@@ -58,10 +63,21 @@ export function FoldersPage({
       return;
     }
 
-    if (!selectedFolderId || !folders.some((folder) => folder.id === selectedFolderId)) {
-      setSelectedFolderId(folders[0].id);
+    if (selectedFolderId && !folders.some((folder) => folder.id === selectedFolderId)) {
+      setSelectedFolderId(null);
     }
   }, [folders, selectedFolderId]);
+
+  async function handleCopy(
+    key: string,
+    action: (entry: VaultEntry) => Promise<boolean>,
+    entry: VaultEntry,
+  ) {
+    const success = await action(entry);
+    if (success) {
+      copyFeedback.markCopied(key);
+    }
+  }
 
   async function handleCreateFolder() {
     const name = newFolderName.trim();
@@ -123,7 +139,79 @@ export function FoldersPage({
       <div className="mx-5 mt-4 h-px bg-white/[0.05]" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-        {folders.length === 0 ? (
+        {selectedFolder ? (
+          <div className="py-4">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedFolderId(null)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                aria-label={t("quickAdd.back")}
+                title={t("quickAdd.back")}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <p className="mono-label text-[9px] text-muted-foreground">
+                  {t("folders.entriesTitle")}
+                </p>
+                <h3 className="mt-1 truncate text-[15px] font-semibold text-foreground">
+                  {selectedFolder.name}
+                </h3>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onCreateEntryInFolder(selectedFolder.id)}
+              >
+                <Plus className="h-4 w-4" />
+                {t("folders.addEntry")}
+              </Button>
+            </div>
+
+            {folderEntries.length === 0 ? (
+              <div className="mt-5 flex min-h-[260px] flex-col items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-5 text-center">
+                <KeyRound className="h-5 w-5 text-primary" />
+                <p className="mt-3 text-[13px] font-medium text-foreground">
+                  {t("folders.emptyFolderTitle")}
+                </p>
+                <p className="mt-2 max-w-[230px] text-[11px] leading-5 text-muted-foreground">
+                  {t("folders.emptyFolderDescription")}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3 divide-y divide-white/[0.05]">
+                {folderEntries.map((entry) => {
+                  const usernameCopied = copyFeedback.isCopied(`username:${entry.id}`);
+                  const passwordCopied = copyFeedback.isCopied(`password:${entry.id}`);
+
+                  return (
+                    <article key={entry.id} className="relative py-4">
+                      <PasswordEntryCard
+                        entry={entry}
+                        folderName={selectedFolder.name}
+                        dragHandleLabel={t("folders.openFolder")}
+                        noUsernameLabel={t("passwords.noUsername")}
+                        onCopyPassword={() =>
+                          void handleCopy(`password:${entry.id}`, onCopyPassword, entry)
+                        }
+                        onCopyUsername={() =>
+                          void handleCopy(`username:${entry.id}`, onCopyUsername, entry)
+                        }
+                        onOpenDetails={() => onOpenEntry(entry)}
+                        passwordCopied={passwordCopied}
+                        reorderingEnabled={false}
+                        usernameCopied={usernameCopied}
+                      />
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : folders.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-[16px] bg-white/[0.04] text-primary">
               <Folder className="h-6 w-6" />
@@ -139,18 +227,12 @@ export function FoldersPage({
           <div className="py-4">
             <div className="space-y-2">
               {folders.map((folder) => {
-                const active = selectedFolder?.id === folder.id;
                 const entryCount = entryCountByFolderId.get(folder.id) ?? 0;
 
                 return (
                   <div
                     key={folder.id}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-[14px] border px-3 py-3 text-left transition-colors",
-                      active
-                        ? "border-primary/45 bg-primary/10"
-                        : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.03]",
-                    )}
+                    className="flex w-full items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-left transition-colors hover:border-white/[0.12] hover:bg-white/[0.03]"
                   >
                     <button
                       type="button"
@@ -183,69 +265,6 @@ export function FoldersPage({
                 );
               })}
             </div>
-
-            {selectedFolder ? (
-              <div className="mt-5 border-t border-white/[0.05] pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="mono-label text-[9px] text-muted-foreground">
-                      {t("folders.entriesTitle")}
-                    </p>
-                    <h3 className="mt-1 truncate text-[13px] font-semibold text-foreground">
-                      {selectedFolder.name}
-                    </h3>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => onCreateEntryInFolder(selectedFolder.id)}
-                  >
-                    <Plus className="h-4 w-4" />
-                    {t("folders.addEntry")}
-                  </Button>
-                </div>
-
-                {folderEntries.length === 0 ? (
-                  <div className="mt-5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-5 text-center">
-                    <KeyRound className="mx-auto h-5 w-5 text-primary" />
-                    <p className="mt-3 text-[13px] font-medium text-foreground">
-                      {t("folders.emptyFolderTitle")}
-                    </p>
-                    <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-                      {t("folders.emptyFolderDescription")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-3 divide-y divide-white/[0.05]">
-                    {folderEntries.map((entry) => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        onClick={() => onOpenEntry(entry)}
-                        className="flex w-full items-center gap-3 py-3 text-left"
-                      >
-                        <ServiceLogoBadge
-                          service={entry.service}
-                          logoId={entry.logoId}
-                          className="h-11 w-11 shrink-0 rounded-[12px]"
-                          imageClassName="h-5 w-5"
-                          fallbackClassName="text-[16px]"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13px] font-medium text-foreground">
-                            {entry.service}
-                          </span>
-                          <span className="mt-1 block truncate text-[11px] text-muted-foreground">
-                            {entry.username || t("passwords.noUsername")}
-                          </span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : null}
           </div>
         )}
       </div>
