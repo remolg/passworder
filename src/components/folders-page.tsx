@@ -749,7 +749,7 @@ function FolderCard({
     <div
       aria-hidden={ariaHidden}
       className={cn(
-        "group flex h-[76px] w-full items-center gap-3 rounded-[12px] px-2 py-2 text-left transition-colors hover:bg-white/[0.035] will-change-transform",
+        "group relative flex h-[76px] w-full items-center gap-3 rounded-[12px] py-2 pl-2 pr-9 text-left transition-colors hover:bg-white/[0.035] will-change-transform",
         className,
       )}
       ref={itemRef}
@@ -778,20 +778,20 @@ function FolderCard({
       </button>
 
       {reorderingEnabled ? (
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.04] bg-white/[0.025] text-muted-foreground/75 transition-colors group-hover:bg-white/[0.04] group-hover:text-muted-foreground">
+        <div className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center text-muted-foreground/65 transition-colors">
           {onDragHandlePointerDown ? (
             <button
               type="button"
               onPointerDown={onDragHandlePointerDown}
-              className="flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-[8px] transition-colors hover:bg-white/[0.06] hover:text-foreground active:cursor-grabbing"
+              className="flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center transition-colors hover:text-foreground active:cursor-grabbing"
               aria-label={dragHandleLabel}
               title={dragHandleLabel}
             >
-              <GripVertical className="h-4 w-4" />
+              <GripVertical className="h-3.5 w-3.5" />
             </button>
           ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]">
-              <GripVertical className="h-4 w-4" />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center">
+              <GripVertical className="h-3.5 w-3.5" />
             </div>
           )}
         </div>
