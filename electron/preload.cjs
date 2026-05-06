@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("passworder", {
   exportEntries: () => ipcRenderer.invoke("vault:export-entries"),
   importEntries: () => ipcRenderer.invoke("vault:import-entries"),
   reorderEntries: (entryIds) => ipcRenderer.invoke("vault:reorder-entries", entryIds),
+  reorderFolders: (folderIds) => ipcRenderer.invoke("vault:reorder-folders", folderIds),
   deleteEntry: (id) => ipcRenderer.invoke("vault:delete-entry", id),
   updateSettings: (settings) => ipcRenderer.invoke("vault:update-settings", settings),
   changeMasterPassword: (input) => ipcRenderer.invoke("vault:change-master-password", input),

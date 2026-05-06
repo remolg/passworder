@@ -225,6 +225,21 @@ export function useVaultController() {
     return true;
   }
 
+  async function reorderFolders(folderIds: string[]) {
+    const nextPayload = await runMutation(
+      () => vaultApi.reorderFolders(folderIds),
+      undefined,
+      false,
+    );
+
+    if (!nextPayload) {
+      return false;
+    }
+
+    setPayload(nextPayload);
+    return true;
+  }
+
   async function exportEntries() {
     setBusy(true);
     setError(null);
@@ -326,6 +341,7 @@ export function useVaultController() {
     exportEntries,
     importEntries,
     reorderEntries,
+    reorderFolders,
     deleteEntry,
     createFolder,
     updateFolder,

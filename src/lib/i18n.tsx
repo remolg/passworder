@@ -87,6 +87,7 @@ const EN_TRANSLATIONS = {
   "folders.editDescription": "Change the folder name and logo.",
   "folders.logo": "Folder Logo",
   "folders.saveEdit": "Save Folder",
+  "folders.reorderFolder": "Reorder folder",
   "folders.reorderEntry": "Reorder folder entry",
   "folders.deleteFolder": "Delete folder",
   "folders.deleteConfirm":
@@ -314,6 +315,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "folders.editDescription": "Klasör adını ve logosunu değiştirin.",
   "folders.logo": "Klasör Logosu",
   "folders.saveEdit": "Klasörü Kaydet",
+  "folders.reorderFolder": "Klasörü taşı",
   "folders.reorderEntry": "Klasördeki kaydı taşı",
   "folders.deleteFolder": "Klasörü sil",
   "folders.deleteConfirm":

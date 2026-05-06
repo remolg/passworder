@@ -24,7 +24,12 @@ import { UnlockScreen } from "@/components/unlock-screen";
 import { VaultSettingsCard } from "@/components/vault-settings-card";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useVaultController } from "@/hooks/use-vault-controller";
-import { appUpdates, appWindow, supportsEntryReorder } from "@/lib/desktop";
+import {
+  appUpdates,
+  appWindow,
+  supportsEntryReorder,
+  supportsFolderReorder,
+} from "@/lib/desktop";
 import {
   getStoredLanguage,
   I18nProvider,
@@ -362,6 +367,13 @@ function AppContent({
     }
   }
 
+  async function handleReorderFolders(folderIds: string[]) {
+    const success = await controller.reorderFolders(folderIds);
+    if (success) {
+      autoLock.touch();
+    }
+  }
+
   async function handleReorderFolderEntries(folderId: string, folderEntryIds: string[]) {
     const payload = controller.payload;
     if (!payload) {
@@ -591,11 +603,13 @@ function AppContent({
                   entries={controller.payload.entries}
                   busy={controller.busy}
                   dragEnabled={supportsEntryReorder()}
+                  folderDragEnabled={supportsFolderReorder()}
                   onCreateFolder={handleCreateFolder}
                   onUpdateFolder={handleUpdateFolder}
                   onDeleteFolder={handleDeleteFolder}
                   onOpenEntry={handleOpenFolderEntry}
                   onCreateEntryInFolder={handleCreateEntryInFolder}
+                  onReorderFolders={handleReorderFolders}
                   onReorderFolderEntries={handleReorderFolderEntries}
                   onCopyUsername={(entry) => handleCopy(entry.username)}
                   onCopyPassword={(entry) => handleCopy(entry.password)}

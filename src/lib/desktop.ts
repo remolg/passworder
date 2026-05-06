@@ -29,6 +29,13 @@ export function supportsEntryReorder() {
   );
 }
 
+export function supportsFolderReorder() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.passworder?.reorderFolders === "function"
+  );
+}
+
 export const vaultApi = {
   async getStatus() {
     return getDesktopApi().getStatus() as Promise<AppStatus>;
@@ -72,6 +79,14 @@ export const vaultApi = {
     }
 
     return api.reorderEntries(entryIds) as Promise<VaultPayload>;
+  },
+  async reorderFolders(folderIds: string[]) {
+    const api = getDesktopApi() as Partial<DesktopVaultApi>;
+    if (typeof api.reorderFolders !== "function") {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    return api.reorderFolders(folderIds) as Promise<VaultPayload>;
   },
   async deleteEntry(id: string) {
     return getDesktopApi().deleteEntry(id) as Promise<VaultPayload>;

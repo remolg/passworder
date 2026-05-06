@@ -387,6 +387,9 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:reorder-entries", async (_event, entryIds) =>
     vaultService.reorderEntries(getVaultStoragePath(), entryIds),
   );
+  ipcMain.handle("vault:reorder-folders", async (_event, folderIds) =>
+    vaultService.reorderFolders(getVaultStoragePath(), folderIds),
+  );
   ipcMain.handle("vault:delete-entry", async (_event, id) =>
     vaultService.deleteEntry(getVaultStoragePath(), id),
   );

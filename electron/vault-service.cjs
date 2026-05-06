@@ -340,6 +340,23 @@ function validateEntryOrder(entryIds, entries) {
   }
 }
 
+function validateFolderOrder(folderIds, folders) {
+  if (!Array.isArray(folderIds) || folderIds.length !== folders.length) {
+    throw new Error("errors.unexpected");
+  }
+
+  const currentIds = new Set(folders.map((folder) => folder.id));
+  if (currentIds.size !== folderIds.length) {
+    throw new Error("errors.unexpected");
+  }
+
+  for (const folderId of folderIds) {
+    if (typeof folderId !== "string" || !currentIds.has(folderId)) {
+      throw new Error("errors.unexpected");
+    }
+  }
+}
+
 function normalizeImportedFolder(folder) {
   if (!folder || typeof folder !== "object") {
     throw new Error("errors.importFileInvalid");
@@ -730,6 +747,20 @@ async function reorderEntries(storagePath, entryIds) {
   return currentSession.payload;
 }
 
+async function reorderFolders(storagePath, folderIds) {
+  const currentSession = ensureUnlockedSession();
+  validateFolderOrder(folderIds, currentSession.payload.folders);
+
+  const foldersById = new Map(
+    currentSession.payload.folders.map((folder) => [folder.id, folder]),
+  );
+
+  currentSession.payload.folders = folderIds.map((folderId) => foldersById.get(folderId));
+
+  await persistSession(storagePath);
+  return currentSession.payload;
+}
+
 async function deleteEntry(storagePath, id) {
   const currentSession = ensureUnlockedSession();
   const originalLength = currentSession.payload.entries.length;
@@ -823,6 +854,7 @@ module.exports = {
   exportEntries,
   importEntries,
   reorderEntries,
+  reorderFolders,
   deleteEntry,
   updateSettings,
   changeMasterPassword,

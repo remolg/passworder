@@ -30,6 +30,7 @@ export interface DesktopVaultApi {
   exportEntries: () => Promise<ExportEntriesResult>;
   importEntries: () => Promise<ImportEntriesResult>;
   reorderEntries: (entryIds: string[]) => Promise<VaultPayload>;
+  reorderFolders: (folderIds: string[]) => Promise<VaultPayload>;
   deleteEntry: (id: string) => Promise<VaultPayload>;
   updateSettings: (settings: VaultSettings) => Promise<VaultPayload>;
   changeMasterPassword: (input: MasterPasswordChangeInput) => Promise<VaultPayload>;

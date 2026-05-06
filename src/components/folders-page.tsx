@@ -7,7 +7,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowLeft, Check, Folder, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Folder,
+  GripVertical,
+  KeyRound,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 import { PasswordEntryCard } from "@/components/password-list";
 import { ServiceLogoBadge } from "@/components/service-logo-badge";
@@ -42,6 +51,8 @@ interface FoldersPageProps {
   onOpenEntry: (entry: VaultEntry) => void;
   onCreateEntryInFolder: (folderId: string) => void;
   dragEnabled: boolean;
+  folderDragEnabled: boolean;
+  onReorderFolders: (folderIds: string[]) => Promise<void> | void;
   onReorderFolderEntries: (
     folderId: string,
     entryIds: string[],
@@ -68,6 +79,8 @@ export function FoldersPage({
   onOpenEntry,
   onCreateEntryInFolder,
   dragEnabled,
+  folderDragEnabled,
+  onReorderFolders,
   onReorderFolderEntries,
   onCopyUsername,
   onCopyPassword,
@@ -276,59 +289,15 @@ export function FoldersPage({
           </div>
         ) : (
           <div className="py-4">
-            <div className="space-y-2">
-              {folders.map((folder) => {
-                const entryCount = entryCountByFolderId.get(folder.id) ?? 0;
-
-                return (
-                  <div
-                    key={folder.id}
-                    className="flex w-full items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-left transition-colors hover:border-white/[0.12] hover:bg-white/[0.03]"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFolderId(folder.id)}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                      aria-label={t("folders.openFolder")}
-                    >
-                      <ServiceLogoBadge
-                        service={folder.name}
-                        logoId={folder.logoId}
-                        className="h-10 w-10 shrink-0 rounded-[12px]"
-                        imageClassName="h-5 w-5"
-                        fallbackClassName="text-[16px]"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium text-foreground">
-                          {folder.name}
-                        </span>
-                        <span className="mt-1 block text-[11px] text-muted-foreground">
-                          {t("common.itemsCount", { count: entryCount })}
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingFolder(folder)}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
-                      aria-label={t("folders.editFolder")}
-                      title={t("folders.editFolder")}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteFolder(folder)}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-destructive/12 hover:text-destructive"
-                      aria-label={t("folders.deleteFolder")}
-                      title={t("folders.deleteFolder")}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+            <FolderList
+              dragEnabled={folderDragEnabled}
+              entryCountByFolderId={entryCountByFolderId}
+              folders={folders}
+              onDeleteFolder={(folder) => void handleDeleteFolder(folder)}
+              onEditFolder={setEditingFolder}
+              onOpenFolder={setSelectedFolderId}
+              onReorder={onReorderFolders}
+            />
           </div>
         )}
       </div>
@@ -341,6 +310,477 @@ export function FoldersPage({
         onSave={handleUpdateFolder}
       />
     </section>
+  );
+}
+
+interface FolderListProps {
+  folders: VaultFolder[];
+  entryCountByFolderId: Map<string, number>;
+  dragEnabled: boolean;
+  onReorder: (folderIds: string[]) => Promise<void> | void;
+  onOpenFolder: (folderId: string) => void;
+  onEditFolder: (folder: VaultFolder) => void;
+  onDeleteFolder: (folder: VaultFolder) => void;
+}
+
+function FolderList({
+  folders,
+  entryCountByFolderId,
+  dragEnabled,
+  onReorder,
+  onOpenFolder,
+  onEditFolder,
+  onDeleteFolder,
+}: FolderListProps) {
+  const { t } = useI18n();
+  const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
+  const [previewFolderIds, setPreviewFolderIds] = useState<string[] | null>(null);
+  const [dragOverlay, setDragOverlay] = useState<DragOverlayState | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLDivElement>());
+  const previousPositionsRef = useRef(new Map<string, number>());
+  const activePointerIdRef = useRef<number | null>(null);
+  const dragOverlayElementRef = useRef<HTMLDivElement | null>(null);
+  const dragOverlayFrameRef = useRef<number | null>(null);
+  const dragOverlayTopRef = useRef(0);
+  const draggedFolderIdRef = useRef<string | null>(null);
+  const skipNextLayoutAnimationRef = useRef(false);
+  const displayFoldersRef = useRef<VaultFolder[]>(folders);
+  const foldersRef = useRef(folders);
+  const onReorderRef = useRef(onReorder);
+  const reorderingEnabled = dragEnabled && folders.length > 1;
+  const displayFolders = sortFolders(folders, previewFolderIds);
+  const draggedFolder =
+    draggedFolderId === null
+      ? null
+      : displayFolders.find((folder) => folder.id === draggedFolderId) ??
+        folders.find((folder) => folder.id === draggedFolderId) ??
+        null;
+
+  draggedFolderIdRef.current = draggedFolderId;
+  displayFoldersRef.current = displayFolders;
+  foldersRef.current = folders;
+  onReorderRef.current = onReorder;
+
+  useEffect(() => {
+    if (typeof document === "undefined" || !draggedFolderId) {
+      return;
+    }
+
+    const previousBodyCursor = document.body.style.cursor;
+    const previousRootCursor = document.documentElement.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+
+    document.body.style.cursor = "grabbing";
+    document.documentElement.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.body.style.cursor = previousBodyCursor;
+      document.documentElement.style.cursor = previousRootCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [draggedFolderId]);
+
+  useLayoutEffect(() => {
+    const nextPositions = readItemPositions(itemRefs.current);
+    const shouldAnimateLayout = draggedFolderId && !skipNextLayoutAnimationRef.current;
+
+    if (shouldAnimateLayout) {
+      for (const [folderId, nextTop] of nextPositions) {
+        if (folderId === draggedFolderId) {
+          continue;
+        }
+
+        const previousTop = previousPositionsRef.current.get(folderId);
+        if (previousTop === undefined) {
+          continue;
+        }
+
+        const deltaY = previousTop - nextTop;
+        if (Math.abs(deltaY) < 1) {
+          continue;
+        }
+
+        const node = itemRefs.current.get(folderId);
+        if (!node) {
+          continue;
+        }
+
+        node.getAnimations().forEach((animation) => animation.cancel());
+        node.animate(
+          [
+            { transform: `translateY(${deltaY}px)` },
+            { transform: "translateY(0)" },
+          ],
+          {
+            duration: 160,
+            easing: "cubic-bezier(0.22,1,0.36,1)",
+          },
+        );
+      }
+    }
+
+    previousPositionsRef.current = nextPositions;
+    skipNextLayoutAnimationRef.current = false;
+  }, [displayFolders, draggedFolderId]);
+
+  useEffect(() => {
+    if (!draggedFolderId || !dragOverlay) {
+      return;
+    }
+
+    const overlayOffsetY = dragOverlay.offsetY;
+    const overlayHeight = dragOverlay.height;
+
+    function updateOverlayTop(nextTop: number) {
+      dragOverlayTopRef.current = nextTop;
+
+      if (dragOverlayFrameRef.current !== null) {
+        return;
+      }
+
+      dragOverlayFrameRef.current = window.requestAnimationFrame(() => {
+        dragOverlayFrameRef.current = null;
+
+        if (!dragOverlayElementRef.current) {
+          return;
+        }
+
+        dragOverlayElementRef.current.style.transform = `translateY(${dragOverlayTopRef.current}px)`;
+      });
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      if (activePointerIdRef.current !== null && event.pointerId !== activePointerIdRef.current) {
+        return;
+      }
+
+      updateOverlayTop(event.clientY - overlayOffsetY);
+      updatePreviewOrder(event.clientY - overlayOffsetY + overlayHeight / 2);
+    }
+
+    function finishDrag(applyReorder: boolean) {
+      activePointerIdRef.current = null;
+      draggedFolderIdRef.current = null;
+      dragOverlayTopRef.current = 0;
+      if (dragOverlayFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragOverlayFrameRef.current);
+        dragOverlayFrameRef.current = null;
+      }
+      setDraggedFolderId(null);
+      setDragOverlay(null);
+
+      if (!applyReorder) {
+        setPreviewFolderIds(null);
+        return;
+      }
+
+      const currentOrder = foldersRef.current.map((folder) => folder.id);
+      const nextOrder = displayFoldersRef.current.map((folder) => folder.id);
+
+      if (areOrdersEqual(currentOrder, nextOrder)) {
+        setPreviewFolderIds(null);
+        return;
+      }
+
+      void (async () => {
+        try {
+          await onReorderRef.current(nextOrder);
+        } finally {
+          setPreviewFolderIds(null);
+        }
+      })();
+    }
+
+    function handlePointerUp(event: PointerEvent) {
+      if (activePointerIdRef.current !== null && event.pointerId !== activePointerIdRef.current) {
+        return;
+      }
+
+      finishDrag(true);
+    }
+
+    function handlePointerCancel(event: PointerEvent) {
+      if (activePointerIdRef.current !== null && event.pointerId !== activePointerIdRef.current) {
+        return;
+      }
+
+      finishDrag(false);
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerCancel);
+
+    return () => {
+      if (dragOverlayFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragOverlayFrameRef.current);
+        dragOverlayFrameRef.current = null;
+      }
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+    };
+  }, [draggedFolderId, dragOverlay?.offsetY]);
+
+  function handleDragHandlePointerDown(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    folderId: string,
+  ) {
+    if (!reorderingEnabled || event.button !== 0) {
+      return;
+    }
+
+    const node = itemRefs.current.get(folderId);
+    if (!node) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const bounds = node.getBoundingClientRect();
+    activePointerIdRef.current = event.pointerId;
+    cancelItemAnimations(itemRefs.current);
+    skipNextLayoutAnimationRef.current = true;
+    previousPositionsRef.current = readItemPositions(itemRefs.current);
+    draggedFolderIdRef.current = folderId;
+    dragOverlayTopRef.current = bounds.top;
+    setDraggedFolderId(folderId);
+    setDragOverlay({
+      height: bounds.height,
+      left: bounds.left,
+      offsetY: event.clientY - bounds.top,
+      top: bounds.top,
+      width: bounds.width,
+    });
+  }
+
+  function updatePreviewOrder(draggedMidY: number) {
+    const sourceId = draggedFolderIdRef.current;
+    if (!sourceId) {
+      return;
+    }
+
+    const currentOrder = displayFoldersRef.current.map((folder) => folder.id);
+    const sourceIndex = currentOrder.indexOf(sourceId);
+    if (sourceIndex === -1) {
+      return;
+    }
+
+    let nextOrder: string[] | null = null;
+    const previousFolderId = sourceIndex > 0 ? currentOrder[sourceIndex - 1] : null;
+    const nextFolderId =
+      sourceIndex < currentOrder.length - 1 ? currentOrder[sourceIndex + 1] : null;
+
+    if (nextFolderId) {
+      const nextNode = itemRefs.current.get(nextFolderId);
+      const nextBounds = nextNode?.getBoundingClientRect();
+
+      if (nextBounds && draggedMidY >= nextBounds.top + nextBounds.height / 2) {
+        nextOrder = moveEntryId(currentOrder, sourceIndex, sourceIndex + 1);
+      }
+    }
+
+    if (!nextOrder && previousFolderId) {
+      const previousNode = itemRefs.current.get(previousFolderId);
+      const previousBounds = previousNode?.getBoundingClientRect();
+
+      if (previousBounds && draggedMidY <= previousBounds.top + previousBounds.height / 2) {
+        nextOrder = moveEntryId(currentOrder, sourceIndex, sourceIndex - 1);
+      }
+    }
+
+    if (!nextOrder || areOrdersEqual(currentOrder, nextOrder)) {
+      return;
+    }
+
+    previousPositionsRef.current = readItemPositions(itemRefs.current);
+    setPreviewFolderIds(nextOrder);
+  }
+
+  return (
+    <>
+      <div
+        className={cn(
+          "space-y-1",
+          draggedFolderId && "cursor-grabbing select-none",
+        )}
+      >
+        {displayFolders.map((folder) => {
+          const entryCount = entryCountByFolderId.get(folder.id) ?? 0;
+
+          if (draggedFolderId === folder.id && dragOverlay) {
+            return (
+              <FolderCard
+                key={folder.id}
+                ariaHidden
+                className="pointer-events-none opacity-0"
+                dragHandleLabel={t("folders.reorderFolder")}
+                entryCount={entryCount}
+                folder={folder}
+                onDelete={() => onDeleteFolder(folder)}
+                onEdit={() => onEditFolder(folder)}
+                onOpen={() => onOpenFolder(folder.id)}
+                reorderingEnabled={reorderingEnabled}
+              />
+            );
+          }
+
+          return (
+            <FolderCard
+              key={folder.id}
+              dragHandleLabel={t("folders.reorderFolder")}
+              entryCount={entryCount}
+              folder={folder}
+              itemRef={(node) => {
+                if (node) {
+                  itemRefs.current.set(folder.id, node);
+                  return;
+                }
+
+                itemRefs.current.delete(folder.id);
+              }}
+              onDelete={() => onDeleteFolder(folder)}
+              onDragHandlePointerDown={
+                reorderingEnabled
+                  ? (event) => handleDragHandlePointerDown(event, folder.id)
+                  : undefined
+              }
+              onEdit={() => onEditFolder(folder)}
+              onOpen={() => onOpenFolder(folder.id)}
+              reorderingEnabled={reorderingEnabled}
+            />
+          );
+        })}
+      </div>
+
+      {draggedFolder && dragOverlay ? (
+        <div
+          className="pointer-events-none fixed z-50"
+          ref={dragOverlayElementRef}
+          style={{
+            height: dragOverlay.height,
+            left: dragOverlay.left,
+            top: 0,
+            transform: `translateY(${dragOverlay.top}px)`,
+            width: dragOverlay.width,
+          }}
+        >
+          <FolderCard
+            dragHandleLabel={t("folders.reorderFolder")}
+            entryCount={entryCountByFolderId.get(draggedFolder.id) ?? 0}
+            folder={draggedFolder}
+            onDelete={() => onDeleteFolder(draggedFolder)}
+            onEdit={() => onEditFolder(draggedFolder)}
+            onOpen={() => onOpenFolder(draggedFolder.id)}
+            reorderingEnabled={reorderingEnabled}
+          />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+interface FolderCardProps {
+  ariaHidden?: boolean;
+  className?: string;
+  dragHandleLabel: string;
+  entryCount: number;
+  folder: VaultFolder;
+  itemRef?: (node: HTMLDivElement | null) => void;
+  onDelete: () => void;
+  onDragHandlePointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onEdit: () => void;
+  onOpen: () => void;
+  reorderingEnabled: boolean;
+}
+
+function FolderCard({
+  ariaHidden,
+  className,
+  dragHandleLabel,
+  entryCount,
+  folder,
+  itemRef,
+  onDelete,
+  onDragHandlePointerDown,
+  onEdit,
+  onOpen,
+  reorderingEnabled,
+}: FolderCardProps) {
+  const { t } = useI18n();
+
+  return (
+    <div
+      aria-hidden={ariaHidden}
+      className={cn(
+        "group flex h-[76px] w-full items-center gap-3 rounded-[12px] px-2 py-2 text-left transition-colors hover:bg-white/[0.035] will-change-transform",
+        className,
+      )}
+      ref={itemRef}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        aria-label={t("folders.openFolder")}
+      >
+        <ServiceLogoBadge
+          service={folder.name}
+          logoId={folder.logoId}
+          className="h-12 w-12 shrink-0 rounded-[14px] bg-white/[0.04]"
+          imageClassName="h-6 w-6"
+          fallbackClassName="text-[18px]"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-semibold text-foreground">
+            {folder.name}
+          </span>
+          <span className="mt-1.5 block text-[11px] text-muted-foreground">
+            {t("common.itemsCount", { count: entryCount })}
+          </span>
+        </span>
+      </button>
+
+      <div className="flex h-9 shrink-0 items-center gap-0.5 rounded-[10px] bg-white/[0.025] px-1 text-muted-foreground/75 transition-colors group-hover:bg-white/[0.04] group-hover:text-muted-foreground">
+        {reorderingEnabled ? (
+          onDragHandlePointerDown ? (
+            <button
+              type="button"
+              onPointerDown={onDragHandlePointerDown}
+              className="flex h-7 w-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-[8px] transition-colors hover:bg-white/[0.06] hover:text-foreground active:cursor-grabbing"
+              aria-label={dragHandleLabel}
+              title={dragHandleLabel}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          ) : (
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]">
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-colors hover:bg-white/[0.06] hover:text-foreground"
+          aria-label={t("folders.editFolder")}
+          title={t("folders.editFolder")}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-colors hover:bg-destructive/12 hover:text-destructive"
+          aria-label={t("folders.deleteFolder")}
+          title={t("folders.deleteFolder")}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -961,6 +1401,23 @@ function sortEntries(entries: VaultEntry[], orderedIds: string[] | null) {
   }
 
   return orderedEntries;
+}
+
+function sortFolders(folders: VaultFolder[], orderedIds: string[] | null) {
+  if (!orderedIds) {
+    return folders;
+  }
+
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const orderedFolders = orderedIds
+    .map((folderId) => foldersById.get(folderId))
+    .filter((folder): folder is VaultFolder => Boolean(folder));
+
+  if (orderedFolders.length !== folders.length) {
+    return folders;
+  }
+
+  return orderedFolders;
 }
 
 function readItemPositions(itemRefs: Map<string, HTMLDivElement>) {
