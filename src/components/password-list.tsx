@@ -641,7 +641,7 @@ function PasswordEntryCard({
   return (
     <div
       className={cn(
-        "flex items-stretch gap-3 rounded-[16px] transition-opacity duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+        "flex h-[72px] w-full items-stretch gap-3 rounded-[16px] transition-opacity duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
         className,
       )}
       ref={itemRef}
@@ -649,19 +649,19 @@ function PasswordEntryCard({
       <button
         type="button"
         onClick={onOpenDetails}
-        className="flex aspect-square min-h-[72px] shrink-0 self-stretch transition-colors hover:bg-white/[0.02]"
+        className="flex h-[72px] w-[72px] shrink-0 transition-colors hover:bg-white/[0.02]"
         aria-label={`${entry.service} details`}
       >
         <ServiceLogoBadge service={entry.service} logoId={entry.logoId} />
       </button>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-center">
-        <div className="flex items-start justify-between gap-3">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-hidden">
+        <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
             <button
               type="button"
               onClick={onOpenDetails}
-              className="truncate text-left text-[14px] font-medium text-foreground transition-colors hover:text-primary"
+              className="block max-w-full truncate text-left text-[14px] font-medium leading-4 text-foreground transition-colors hover:text-primary"
             >
               {entry.service}
             </button>
@@ -670,7 +670,7 @@ function PasswordEntryCard({
               type="button"
               onClick={onCopyUsername}
               className={cn(
-                "mt-1 flex items-center gap-1.5 text-[12px] transition-colors",
+                "mt-2 flex items-center gap-1.5 text-[12px] leading-4 transition-colors",
                 usernameCopied
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -696,7 +696,7 @@ function PasswordEntryCard({
           </div>
 
           {folderName || reorderingEnabled ? (
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex h-8 w-[68px] shrink-0 items-center justify-end gap-1">
               {folderName ? (
                 <span
                   className="flex h-8 w-8 items-center justify-center text-primary/85"
@@ -706,6 +706,8 @@ function PasswordEntryCard({
                 >
                   <Folder className="h-3.5 w-3.5" />
                 </span>
+              ) : reorderingEnabled ? (
+                <span className="h-8 w-8 shrink-0" aria-hidden="true" />
               ) : null}
 
               {reorderingEnabled ? (
@@ -732,7 +734,7 @@ function PasswordEntryCard({
           type="button"
           onClick={onCopyPassword}
           className={cn(
-            "mt-3 inline-flex max-w-full self-start items-center gap-1.5 text-left text-[12px] transition-colors",
+            "mt-2 inline-flex max-w-full self-start items-center gap-1.5 text-left text-[12px] leading-4 transition-colors",
             passwordCopied
               ? "text-primary"
               : "text-muted-foreground hover:text-foreground",
