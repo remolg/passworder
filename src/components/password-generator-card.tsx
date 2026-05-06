@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { useI18n } from "@/lib/i18n";
 import {
   getDefaultGeneratorOptions,
-  persistGeneratorLength,
+  persistGeneratorOptions,
   DEFAULT_GENERATOR_LENGTH,
 } from "@/lib/password-generator-preferences";
 import { cn } from "@/lib/utils";
@@ -64,10 +64,7 @@ export function PasswordGeneratorCard({
       [key]: value,
     };
 
-    if (key === "length" && typeof value === "number") {
-      persistGeneratorLength(value);
-    }
-
+    persistGeneratorOptions(nextOptions);
     setOptions(nextOptions);
     refresh(nextOptions);
   }
