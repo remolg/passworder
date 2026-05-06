@@ -48,6 +48,14 @@ export const vaultApi = {
   async createFolder(input: FolderMutationInput) {
     return getDesktopApi().createFolder(input) as Promise<VaultPayload>;
   },
+  async updateFolder(input: FolderMutationInput) {
+    const api = getDesktopApi() as Partial<DesktopVaultApi>;
+    if (typeof api.updateFolder !== "function") {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    return api.updateFolder(input) as Promise<VaultPayload>;
+  },
   async deleteFolder(id: string) {
     return getDesktopApi().deleteFolder(id) as Promise<VaultPayload>;
   },

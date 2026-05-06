@@ -25,6 +25,7 @@ export interface DesktopVaultApi {
   lockVault: () => Promise<void>;
   saveEntry: (input: EntryMutationInput) => Promise<VaultPayload>;
   createFolder: (input: FolderMutationInput) => Promise<VaultPayload>;
+  updateFolder: (input: FolderMutationInput) => Promise<VaultPayload>;
   deleteFolder: (id: string) => Promise<VaultPayload>;
   exportEntries: () => Promise<ExportEntriesResult>;
   importEntries: () => Promise<ImportEntriesResult>;

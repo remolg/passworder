@@ -305,6 +305,15 @@ function AppContent({
     return success;
   }
 
+  async function handleUpdateFolder(input: { id: string; name: string; logoId?: string }) {
+    const success = await controller.updateFolder(input);
+    if (success) {
+      autoLock.touch();
+    }
+
+    return success;
+  }
+
   async function handleDeleteFolder(id: string) {
     const success = await controller.deleteFolder(id);
     if (success) {
@@ -551,6 +560,7 @@ function AppContent({
                   entries={controller.payload.entries}
                   busy={controller.busy}
                   onCreateFolder={handleCreateFolder}
+                  onUpdateFolder={handleUpdateFolder}
                   onDeleteFolder={handleDeleteFolder}
                   onOpenEntry={handleOpenFolderEntry}
                   onCreateEntryInFolder={handleCreateEntryInFolder}

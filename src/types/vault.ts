@@ -23,6 +23,7 @@ export interface VaultEntry {
 export interface VaultFolder {
   id: string;
   name: string;
+  logoId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,7 +77,9 @@ export interface EntryMutationInput {
 }
 
 export interface FolderMutationInput {
+  id?: string;
   name: string;
+  logoId?: string;
 }
 
 export interface MasterPasswordChangeInput {

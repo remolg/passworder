@@ -344,6 +344,9 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:create-folder", async (_event, input) =>
     vaultService.createFolder(getVaultStoragePath(), input),
   );
+  ipcMain.handle("vault:update-folder", async (_event, input) =>
+    vaultService.updateFolder(getVaultStoragePath(), input),
+  );
   ipcMain.handle("vault:delete-folder", async (_event, id) =>
     vaultService.deleteFolder(getVaultStoragePath(), id),
   );

@@ -226,6 +226,7 @@ function normalizeFolders(folders) {
     normalizedFolders.push({
       id,
       name,
+      logoId: normalizeLogoId(folder?.logoId),
       createdAt: typeof folder?.createdAt === "string" ? folder.createdAt : now,
       updatedAt: typeof folder?.updatedAt === "string" ? folder.updatedAt : now,
     });
@@ -273,6 +274,7 @@ function cloneFolder(folder) {
   return {
     id: folder.id,
     name: folder.name,
+    logoId: normalizeLogoId(folder.logoId),
     createdAt: folder.createdAt,
     updatedAt: folder.updatedAt,
   };
@@ -309,10 +311,11 @@ function validateFolderInput(input) {
   }
 }
 
-function ensureFolderNameAvailable(folders, name) {
+function ensureFolderNameAvailable(folders, name, ignoredFolderId) {
   const nameKey = normalizeFolderNameKey(name);
   const nameExists = folders.some(
-    (folder) => normalizeFolderNameKey(folder.name) === nameKey,
+    (folder) =>
+      folder.id !== ignoredFolderId && normalizeFolderNameKey(folder.name) === nameKey,
   );
 
   if (nameExists) {
@@ -352,6 +355,7 @@ function normalizeImportedFolder(folder) {
   return {
     id: typeof folder.id === "string" && folder.id ? folder.id : crypto.randomUUID(),
     name,
+    logoId: normalizeLogoId(folder.logoId),
     createdAt: typeof folder.createdAt === "string" ? folder.createdAt : now,
     updatedAt: typeof folder.updatedAt === "string" ? folder.updatedAt : now,
   };
@@ -573,9 +577,38 @@ async function createFolder(storagePath, input) {
   currentSession.payload.folders.unshift({
     id: crypto.randomUUID(),
     name,
+    logoId: normalizeLogoId(input.logoId),
     createdAt: now,
     updatedAt: now,
   });
+
+  await persistSession(storagePath);
+  return currentSession.payload;
+}
+
+async function updateFolder(storagePath, input) {
+  validateFolderInput(input);
+
+  const currentSession = ensureUnlockedSession();
+  const folderId = typeof input?.id === "string" ? input.id.trim() : "";
+  const folderIndex = currentSession.payload.folders.findIndex(
+    (folder) => folder.id === folderId,
+  );
+
+  if (folderIndex === -1) {
+    throw new Error("errors.folderNotFound");
+  }
+
+  const existingFolder = currentSession.payload.folders[folderIndex];
+  const name = normalizeFolderName(input.name);
+  ensureFolderNameAvailable(currentSession.payload.folders, name, existingFolder.id);
+
+  currentSession.payload.folders[folderIndex] = {
+    ...existingFolder,
+    name,
+    logoId: normalizeLogoId(input.logoId),
+    updatedAt: isoNow(),
+  };
 
   await persistSession(storagePath);
   return currentSession.payload;
@@ -785,6 +818,7 @@ module.exports = {
   lockVault,
   saveEntry,
   createFolder,
+  updateFolder,
   deleteFolder,
   exportEntries,
   importEntries,

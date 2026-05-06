@@ -82,6 +82,11 @@ const EN_TRANSLATIONS = {
   "folders.emptyDescription":
     "Create a folder to group related accounts and find them faster.",
   "folders.openFolder": "Open folder",
+  "folders.editFolder": "Edit folder",
+  "folders.editTitle": "Edit Folder",
+  "folders.editDescription": "Change the folder name and logo.",
+  "folders.logo": "Folder Logo",
+  "folders.saveEdit": "Save Folder",
   "folders.deleteFolder": "Delete folder",
   "folders.deleteConfirm":
     "Delete {name}? Entries stay in the vault but leave this folder.",
@@ -182,7 +187,7 @@ const EN_TRANSLATIONS = {
   "errors.runtimeMissing":
     "Electron runtime was not found. Start the app as a desktop app with `npm run dev`.",
   "errors.desktopRestartRequired":
-    "Electron bridge was updated. Fully restart the desktop app to use drag sorting.",
+    "Electron bridge was updated. Fully restart the desktop app to use the latest actions.",
   "errors.importFileInvalid":
     "The selected file is not a valid Passworder export.",
   "errors.vaultLocked": "Vault is locked.",
@@ -212,6 +217,7 @@ const EN_TRANSLATIONS = {
   "notice.entryCreated": "New entry added.",
   "notice.entryDeleted": "Entry deleted.",
   "notice.folderCreated": "Folder created.",
+  "notice.folderUpdated": "Folder updated.",
   "notice.folderDeleted": "Folder deleted.",
   "notice.masterPasswordUpdated": "Master password updated.",
   "notice.exportCompleted": "Passwords exported.",
@@ -302,6 +308,11 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "folders.emptyDescription":
     "İlgili hesapları gruplamak ve daha hızlı bulmak için klasör oluşturun.",
   "folders.openFolder": "Klasörü aç",
+  "folders.editFolder": "Klasörü düzenle",
+  "folders.editTitle": "Klasörü Düzenle",
+  "folders.editDescription": "Klasör adını ve logosunu değiştirin.",
+  "folders.logo": "Klasör Logosu",
+  "folders.saveEdit": "Klasörü Kaydet",
   "folders.deleteFolder": "Klasörü sil",
   "folders.deleteConfirm":
     "{name} klasörü silinsin mi? Kayıtlar kasada kalır ancak klasörden çıkarılır.",
@@ -402,7 +413,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "errors.runtimeMissing":
     "Electron çalışma zamanı bulunamadı. Uygulamayı masaüstü olarak `npm run dev` ile başlatın.",
   "errors.desktopRestartRequired":
-    "Electron köprüsü güncellendi. Sürükleyerek sıralama için masaüstü uygulamayı tamamen yeniden başlatın.",
+    "Electron köprüsü güncellendi. En yeni işlemleri kullanmak için masaüstü uygulamayı tamamen yeniden başlatın.",
   "errors.importFileInvalid":
     "Seçilen dosya geçerli bir Passworder aktarım dosyası değil.",
   "errors.vaultLocked": "Kasa kilitli.",
@@ -432,6 +443,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "notice.entryCreated": "Yeni kayıt eklendi.",
   "notice.entryDeleted": "Kayıt silindi.",
   "notice.folderCreated": "Klasör oluşturuldu.",
+  "notice.folderUpdated": "Klasör güncellendi.",
   "notice.folderDeleted": "Klasör silindi.",
   "notice.masterPasswordUpdated": "Master password güncellendi.",
   "notice.exportCompleted": "Şifreler dışa aktarıldı.",
