@@ -117,6 +117,8 @@ function AppContent({
     useState<SectionId>("passwords");
   const [pendingDeleteEntry, setPendingDeleteEntry] = useState<VaultEntry | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("passwords");
+  const [quickAddBackSection, setQuickAddBackSection] =
+    useState<SectionId>("passwords");
   const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
@@ -318,6 +320,7 @@ function AppContent({
       folderId,
     });
     setSelectedEntry(null);
+    setQuickAddBackSection("folders");
     setActiveSection("quick-add");
   }
 
@@ -387,6 +390,7 @@ function AppContent({
       ...current,
       password,
     }));
+    setQuickAddBackSection("generator");
     setActiveSection("quick-add");
   }
 
@@ -472,6 +476,11 @@ function AppContent({
                       key={id}
                       type="button"
                       onClick={() => {
+                        if (id === "quick-add") {
+                          setQuickAddBackSection(
+                            activeSection === "quick-add" ? "passwords" : activeSection,
+                          );
+                        }
                         setActiveSection(id);
                       }}
                       className={cn(
@@ -529,6 +538,7 @@ function AppContent({
                     onCopyPassword={(entry) => handleCopy(entry.password)}
                     onCreateNew={() => {
                       setSelectedEntry(null);
+                      setQuickAddBackSection("passwords");
                       setActiveSection("quick-add");
                     }}
                   />
@@ -552,7 +562,7 @@ function AppContent({
                   values={quickAddValues}
                   folders={controller.payload.folders}
                   busy={controller.busy}
-                  onBack={() => setActiveSection("passwords")}
+                  onBack={() => setActiveSection(quickAddBackSection)}
                   onChange={(field, value) =>
                     setQuickAddValues((current) => ({
                       ...current,

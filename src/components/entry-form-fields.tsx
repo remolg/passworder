@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -37,11 +37,41 @@ export function EntryFormFields({
   const { language, t } = useI18n();
   const [showPassword, setShowPassword] = useState(false);
   const [logoPickerOpen, setLogoPickerOpen] = useState(false);
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+  const folderPickerRef = useRef<HTMLDivElement>(null);
   const copyFeedback = useCopyFeedback();
   const strength = getPasswordStrength(values.password);
   const passwordCopied = copyFeedback.isCopied("password");
   const locale = language === "tr" ? "tr-TR" : "en-US";
   const selectedLogo = getLogoOption(values.logoId);
+  const selectedFolder =
+    folders.find((folder) => folder.id === values.folderId) ?? null;
+
+  useEffect(() => {
+    if (!folderPickerOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!folderPickerRef.current?.contains(event.target as Node)) {
+        setFolderPickerOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setFolderPickerOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [folderPickerOpen]);
 
   async function handleCopyPassword() {
     if (!onCopyPassword) {
@@ -76,6 +106,21 @@ export function EntryFormFields({
     setLogoPickerOpen(false);
   }
 
+  function handleLogoPickerToggle() {
+    setLogoPickerOpen((current) => !current);
+    setFolderPickerOpen(false);
+  }
+
+  function handleFolderPickerToggle() {
+    setFolderPickerOpen((current) => !current);
+    setLogoPickerOpen(false);
+  }
+
+  function handleFolderSelect(nextFolderId: string) {
+    onChange("folderId", nextFolderId);
+    setFolderPickerOpen(false);
+  }
+
   return (
     <div className="space-y-5">
       <FieldGroup label={t("fields.service")} htmlFor="service">
@@ -92,7 +137,7 @@ export function EntryFormFields({
           <button
             id="logoId"
             type="button"
-            onClick={() => setLogoPickerOpen((current) => !current)}
+            onClick={handleLogoPickerToggle}
             className="flex w-full items-center justify-between gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-3 text-left transition-colors hover:border-white/[0.12] hover:bg-white/[0.03]"
           >
             <span className="flex min-w-0 items-center gap-3">
@@ -154,22 +199,67 @@ export function EntryFormFields({
 
       {folders.length > 0 ? (
         <FieldGroup label={t("fields.folder")} htmlFor="folderId">
-          <div className="relative">
-            <Folder className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <select
+          <div className="relative" ref={folderPickerRef}>
+            <button
               id="folderId"
-              value={values.folderId}
-              onChange={(event) => onChange("folderId", event.target.value)}
-              className="flex h-10 w-full appearance-none rounded-[10px] border border-transparent bg-white/[0.04] py-2 pl-9 pr-9 text-[13px] text-foreground shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              type="button"
+              onClick={handleFolderPickerToggle}
+              className={cn(
+                "flex h-11 w-full items-center justify-between gap-3 rounded-[12px] border px-3 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                folderPickerOpen
+                  ? "border-primary/55 bg-primary/10"
+                  : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.14] hover:bg-white/[0.04]",
+              )}
+              aria-haspopup="listbox"
+              aria-expanded={folderPickerOpen}
             >
-              <option value="">{t("fields.folderNone")}</option>
-              {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px]",
+                    selectedFolder
+                      ? "bg-primary/12 text-primary"
+                      : "bg-white/[0.04] text-muted-foreground",
+                  )}
+                >
+                  <Folder className="h-4 w-4" />
+                </span>
+                <span className="block min-w-0 truncate text-[13px] font-medium text-foreground">
+                  {selectedFolder?.name ?? t("fields.folderNone")}
+                </span>
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                  folderPickerOpen && "rotate-180",
+                )}
+              />
+            </button>
+
+            {folderPickerOpen ? (
+              <div
+                className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#11182a] p-1.5 shadow-[0_18px_45px_rgba(2,6,23,0.32)]"
+                role="listbox"
+                aria-labelledby="folderId"
+              >
+                <FolderOptionButton
+                  active={!values.folderId}
+                  label={t("fields.folderNone")}
+                  onClick={() => handleFolderSelect("")}
+                />
+                <div className="my-1 h-px bg-white/[0.06]" />
+                <div className="max-h-[150px] overflow-y-auto pr-1">
+                  {folders.map((folder) => (
+                    <FolderOptionButton
+                      key={folder.id}
+                      active={values.folderId === folder.id}
+                      label={folder.name}
+                      onClick={() => handleFolderSelect(folder.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
           <p className="text-[11px] leading-5 text-muted-foreground">
             {t("fields.folderHint")}
@@ -376,6 +466,42 @@ function LogoPickerButton({
       title={label}
     >
       {children}
+    </button>
+  );
+}
+
+function FolderOptionButton({
+  active,
+  label,
+  onClick,
+}: {
+  active?: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex h-9 w-full items-center justify-between gap-3 rounded-[10px] px-2.5 text-left text-[13px] transition-colors",
+        active
+          ? "bg-primary/14 text-foreground"
+          : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+      )}
+      role="option"
+      aria-selected={active}
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <Folder
+          className={cn(
+            "h-4 w-4 shrink-0",
+            active ? "text-primary" : "text-muted-foreground",
+          )}
+        />
+        <span className="truncate">{label}</span>
+      </span>
+      {active ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
     </button>
   );
 }
