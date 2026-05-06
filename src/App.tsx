@@ -45,6 +45,7 @@ import {
   AppLanguage,
   EntryFormValues,
   EntryMutationInput,
+  FolderMutationInput,
   PasswordGeneratorOptions,
   VaultEntry,
   VaultSettings,
@@ -301,8 +302,8 @@ function AppContent({
     autoLock.touch();
   }
 
-  async function handleCreateFolder(name: string) {
-    const success = await controller.createFolder({ name });
+  async function handleCreateFolder(input: FolderMutationInput) {
+    const success = await controller.createFolder(input);
     if (success) {
       autoLock.touch();
     }

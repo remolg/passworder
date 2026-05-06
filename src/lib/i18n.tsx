@@ -78,6 +78,7 @@ const EN_TRANSLATIONS = {
   "folders.name": "Folder Name",
   "folders.namePlaceholder": "e.g. Valorant accounts",
   "folders.create": "Create Folder",
+  "folders.createDescription": "Choose a folder name and logo.",
   "folders.emptyTitle": "No folders yet.",
   "folders.emptyDescription":
     "Create a folder to group related accounts and find them faster.",
@@ -306,6 +307,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "folders.name": "Klasör Adı",
   "folders.namePlaceholder": "Örn. Valorant hesapları",
   "folders.create": "Klasör Oluştur",
+  "folders.createDescription": "Klasör adını ve logosunu seçin.",
   "folders.emptyTitle": "Henüz klasör yok.",
   "folders.emptyDescription":
     "İlgili hesapları gruplamak ve daha hızlı bulmak için klasör oluşturun.",

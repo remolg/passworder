@@ -15,6 +15,7 @@ import {
   KeyRound,
   Pencil,
   Plus,
+  Search,
   Trash2,
 } from "lucide-react";
 
@@ -35,13 +36,13 @@ import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { useI18n } from "@/lib/i18n";
 import { getLogoOption, LOGO_OPTIONS } from "@/lib/logo-catalog";
 import { cn } from "@/lib/utils";
-import { VaultEntry, VaultFolder } from "@/types/vault";
+import { FolderMutationInput, VaultEntry, VaultFolder } from "@/types/vault";
 
 interface FoldersPageProps {
   folders: VaultFolder[];
   entries: VaultEntry[];
   busy: boolean;
-  onCreateFolder: (name: string) => Promise<boolean> | boolean;
+  onCreateFolder: (input: FolderMutationInput) => Promise<boolean> | boolean;
   onUpdateFolder: (input: {
     id: string;
     name: string;
@@ -86,7 +87,8 @@ export function FoldersPage({
   onCopyPassword,
 }: FoldersPageProps) {
   const { t } = useI18n();
-  const [newFolderName, setNewFolderName] = useState("");
+  const [folderSearchTerm, setFolderSearchTerm] = useState("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [editingFolder, setEditingFolder] = useState<VaultFolder | null>(null);
 
@@ -110,6 +112,18 @@ export function FoldersPage({
   const folderEntries = selectedFolder
     ? entries.filter((entry) => entry.folderId === selectedFolder.id)
     : [];
+  const filteredFolders = useMemo(() => {
+    const normalizedSearchTerm = folderSearchTerm.trim().toLocaleLowerCase("tr-TR");
+
+    if (!normalizedSearchTerm) {
+      return folders;
+    }
+
+    return folders.filter((folder) =>
+      folder.name.toLocaleLowerCase("tr-TR").includes(normalizedSearchTerm),
+    );
+  }, [folderSearchTerm, folders]);
+  const folderSearchActive = Boolean(folderSearchTerm.trim());
 
   useEffect(() => {
     if (folders.length === 0) {
@@ -121,18 +135,6 @@ export function FoldersPage({
       setSelectedFolderId(null);
     }
   }, [folders, selectedFolderId]);
-
-  async function handleCreateFolder() {
-    const name = newFolderName.trim();
-    if (!name) {
-      return;
-    }
-
-    const success = await onCreateFolder(name);
-    if (success) {
-      setNewFolderName("");
-    }
-  }
 
   async function handleDeleteFolder(folder: VaultFolder) {
     if (!window.confirm(t("folders.deleteConfirm", { name: folder.name }))) {
@@ -225,39 +227,34 @@ export function FoldersPage({
               <h2 className="text-[14px] font-semibold text-foreground">
                 {t("folders.title")}
               </h2>
-              <span className="mono-label text-[9px] text-muted-foreground">
-                {t("folders.badge")}
-              </span>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <Input
-                value={newFolderName}
-                onChange={(event) => setNewFolderName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    void handleCreateFolder();
-                  }
-                }}
-                placeholder={t("folders.namePlaceholder")}
-                aria-label={t("folders.name")}
-              />
               <Button
                 type="button"
-                size="icon"
-                onClick={() => void handleCreateFolder()}
-                disabled={busy || !newFolderName.trim()}
+                size="sm"
+                onClick={() => setCreateDialogOpen(true)}
+                disabled={busy}
                 aria-label={t("folders.create")}
                 title={t("folders.create")}
               >
                 <Plus className="h-4 w-4" />
+                {t("passwords.new")}
               </Button>
+            </div>
+
+            <div className="relative mt-3">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                autoFocus
+                value={folderSearchTerm}
+                onChange={(event) => setFolderSearchTerm(event.target.value)}
+                placeholder={t("passwords.searchPlaceholder")}
+                className="pl-9"
+              />
             </div>
           </>
         )}
       </div>
 
-      <div className="mx-5 mt-4 h-px bg-white/[0.05]" />
+      <div className="mx-5 mt-3 h-px bg-white/[0.05]" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
         {selectedFolder ? (
@@ -296,19 +293,62 @@ export function FoldersPage({
             <p className="mt-2 max-w-[230px] text-[12px] leading-6 text-muted-foreground">
               {t("folders.emptyDescription")}
             </p>
+            <Button
+              type="button"
+              size="sm"
+              className="mt-5"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              {t("folders.create")}
+            </Button>
+          </div>
+        ) : filteredFolders.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <p className="text-[15px] font-medium text-foreground">
+              {t("passwords.noResultsTitle")}
+            </p>
+            <p className="mt-2 max-w-[220px] text-[12px] leading-6 text-muted-foreground">
+              {t("passwords.noResultsDescription")}
+            </p>
+            {folderSearchActive ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-5"
+                onClick={() => setFolderSearchTerm("")}
+              >
+                {t("passwords.clearFilters")}
+              </Button>
+            ) : null}
           </div>
         ) : (
           <div className="py-4">
             <FolderList
-              dragEnabled={folderDragEnabled}
+              dragEnabled={folderDragEnabled && !folderSearchActive}
               entryCountByFolderId={entryCountByFolderId}
-              folders={folders}
+              folders={filteredFolders}
               onOpenFolder={setSelectedFolderId}
               onReorder={onReorderFolders}
             />
           </div>
         )}
       </div>
+
+      <FolderFormDialog
+        open={createDialogOpen}
+        busy={busy}
+        onClose={() => setCreateDialogOpen(false)}
+        onSave={async (input) => {
+          const success = await onCreateFolder(input);
+          if (success) {
+            setCreateDialogOpen(false);
+          }
+
+          return success;
+        }}
+      />
 
       <FolderEditDialog
         folder={editingFolder}
@@ -1172,6 +1212,78 @@ interface FolderEditDialogProps {
   onSave: (input: { id: string; name: string; logoId?: string }) => Promise<boolean> | boolean;
 }
 
+interface FolderFormDialogProps {
+  open: boolean;
+  busy: boolean;
+  onClose: () => void;
+  onSave: (input: FolderMutationInput) => Promise<boolean> | boolean;
+}
+
+function FolderFormDialog({
+  open,
+  busy,
+  onClose,
+  onSave,
+}: FolderFormDialogProps) {
+  const { t } = useI18n();
+  const [name, setName] = useState("");
+  const [logoId, setLogoId] = useState("");
+  const selectedLogo = getLogoOption(logoId);
+
+  useEffect(() => {
+    if (!open) {
+      setName("");
+      setLogoId("");
+    }
+  }, [open]);
+
+  async function handleSave() {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    await onSave({
+      name: trimmedName,
+      logoId,
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : null)}>
+      <DialogContent className="gap-0 p-0">
+        <DialogHeader className="px-5 py-5 pr-12">
+          <DialogTitle className="text-[15px] font-semibold text-foreground">
+            {t("folders.create")}
+          </DialogTitle>
+          <DialogDescription className="text-[12px] leading-6 text-muted-foreground">
+            {t("folders.createDescription")}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[58vh] overflow-y-auto border-t border-white/[0.05] px-5 py-5">
+          <FolderFormFields
+            name={name}
+            logoId={logoId}
+            selectedLogoLabel={selectedLogo?.label ?? t("fields.logoFallback")}
+            onLogoChange={setLogoId}
+            onNameChange={setName}
+          />
+        </div>
+
+        <DialogFooter className="border-t border-white/[0.05] px-5 py-4">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="button" onClick={() => void handleSave()} disabled={busy || !name.trim()}>
+            {t("folders.create")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function FolderEditDialog({
   folder,
   open,
@@ -1230,73 +1342,13 @@ function FolderEditDialog({
         </DialogHeader>
 
         <div className="max-h-[58vh] overflow-y-auto border-t border-white/[0.05] px-5 py-5">
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <Label
-                htmlFor="folderName"
-                className="mono-label text-[10px] text-muted-foreground"
-              >
-                {t("folders.name")}
-              </Label>
-              <Input
-                id="folderName"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={t("folders.namePlaceholder")}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label className="mono-label text-[10px] text-muted-foreground">
-                {t("folders.logo")}
-              </Label>
-              <div className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-3">
-                <ServiceLogoBadge
-                  service={(name || folder?.name) ?? ""}
-                  logoId={logoId}
-                  className="h-10 w-10 shrink-0 rounded-[12px]"
-                  imageClassName="h-5 w-5"
-                  fallbackClassName="text-[16px]"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] font-medium text-foreground">
-                    {selectedLogo?.label ?? t("fields.logoFallback")}
-                  </span>
-                </span>
-              </div>
-
-              <div className="grid max-h-[210px] grid-cols-5 gap-2 overflow-y-auto rounded-[16px] border border-white/[0.06] bg-white/[0.02] p-3">
-                <LogoPickerButton
-                  active={!logoId}
-                  label={t("fields.logoFallback")}
-                  onClick={() => setLogoId("")}
-                >
-                  <ServiceLogoBadge
-                    service={(name || folder?.name) ?? ""}
-                    className="rounded-[12px] bg-transparent"
-                    imageClassName="h-6 w-6"
-                    fallbackClassName="text-[18px]"
-                  />
-                </LogoPickerButton>
-
-                {LOGO_OPTIONS.map((logo) => (
-                  <LogoPickerButton
-                    key={logo.id}
-                    active={logoId === logo.id}
-                    label={logo.label}
-                    onClick={() => setLogoId(logo.id)}
-                  >
-                    <img
-                      src={logo.src}
-                      alt={logo.label}
-                      className="h-6 w-6 object-contain"
-                      draggable={false}
-                    />
-                  </LogoPickerButton>
-                ))}
-              </div>
-            </div>
-          </div>
+          <FolderFormFields
+            name={name}
+            logoId={logoId}
+            selectedLogoLabel={selectedLogo?.label ?? t("fields.logoFallback")}
+            onLogoChange={setLogoId}
+            onNameChange={setName}
+          />
         </div>
 
         <DialogFooter className="border-t border-white/[0.05] px-5 py-4 sm:items-center sm:justify-between">
@@ -1321,6 +1373,94 @@ function FolderEditDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface FolderFormFieldsProps {
+  name: string;
+  logoId: string;
+  selectedLogoLabel: string;
+  onNameChange: (name: string) => void;
+  onLogoChange: (logoId: string) => void;
+}
+
+function FolderFormFields({
+  name,
+  logoId,
+  selectedLogoLabel,
+  onNameChange,
+  onLogoChange,
+}: FolderFormFieldsProps) {
+  const { t } = useI18n();
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Label
+          htmlFor="folderName"
+          className="mono-label text-[10px] text-muted-foreground"
+        >
+          {t("folders.name")}
+        </Label>
+        <Input
+          id="folderName"
+          value={name}
+          onChange={(event) => onNameChange(event.target.value)}
+          placeholder={t("folders.namePlaceholder")}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label className="mono-label text-[10px] text-muted-foreground">
+          {t("folders.logo")}
+        </Label>
+        <div className="flex items-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+          <ServiceLogoBadge
+            service={name}
+            logoId={logoId}
+            className="h-10 w-10 shrink-0 rounded-[12px]"
+            imageClassName="h-5 w-5"
+            fallbackClassName="text-[16px]"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[12px] font-medium text-foreground">
+              {selectedLogoLabel}
+            </span>
+          </span>
+        </div>
+
+        <div className="grid max-h-[210px] grid-cols-5 gap-2 overflow-y-auto rounded-[16px] border border-white/[0.06] bg-white/[0.02] p-3">
+          <LogoPickerButton
+            active={!logoId}
+            label={t("fields.logoFallback")}
+            onClick={() => onLogoChange("")}
+          >
+            <ServiceLogoBadge
+              service={name}
+              className="rounded-[12px] bg-transparent"
+              imageClassName="h-6 w-6"
+              fallbackClassName="text-[18px]"
+            />
+          </LogoPickerButton>
+
+          {LOGO_OPTIONS.map((logo) => (
+            <LogoPickerButton
+              key={logo.id}
+              active={logoId === logo.id}
+              label={logo.label}
+              onClick={() => onLogoChange(logo.id)}
+            >
+              <img
+                src={logo.src}
+                alt={logo.label}
+                className="h-6 w-6 object-contain"
+                draggable={false}
+              />
+            </LogoPickerButton>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
