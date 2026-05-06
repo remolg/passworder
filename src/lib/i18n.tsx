@@ -87,6 +87,7 @@ const EN_TRANSLATIONS = {
   "folders.editDescription": "Change the folder name and logo.",
   "folders.logo": "Folder Logo",
   "folders.saveEdit": "Save Folder",
+  "folders.reorderEntry": "Reorder folder entry",
   "folders.deleteFolder": "Delete folder",
   "folders.deleteConfirm":
     "Delete {name}? Entries stay in the vault but leave this folder.",
@@ -94,7 +95,7 @@ const EN_TRANSLATIONS = {
   "folders.emptyFolderTitle": "This folder is empty.",
   "folders.emptyFolderDescription":
     "Add a new entry directly into this folder.",
-  "folders.addEntry": "Add to Folder",
+  "folders.addEntry": "Add Entry",
   "quickAdd.back": "Back",
   "quickAdd.badge": "Add New Secret",
   "quickAdd.title": "Quick Add",
@@ -313,6 +314,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "folders.editDescription": "Klasör adını ve logosunu değiştirin.",
   "folders.logo": "Klasör Logosu",
   "folders.saveEdit": "Klasörü Kaydet",
+  "folders.reorderEntry": "Klasördeki kaydı taşı",
   "folders.deleteFolder": "Klasörü sil",
   "folders.deleteConfirm":
     "{name} klasörü silinsin mi? Kayıtlar kasada kalır ancak klasörden çıkarılır.",
@@ -320,7 +322,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "folders.emptyFolderTitle": "Bu klasör boş.",
   "folders.emptyFolderDescription":
     "Yeni kaydı doğrudan bu klasörün içine ekleyin.",
-  "folders.addEntry": "Klasöre Ekle",
+  "folders.addEntry": "Kayıt Ekle",
   "quickAdd.back": "Geri",
   "quickAdd.badge": "Yeni Gizli Bilgi Ekle",
   "quickAdd.title": "Hızlı Ekle",

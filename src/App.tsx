@@ -362,6 +362,37 @@ function AppContent({
     }
   }
 
+  async function handleReorderFolderEntries(folderId: string, folderEntryIds: string[]) {
+    const payload = controller.payload;
+    if (!payload) {
+      return;
+    }
+
+    const folderEntryIdSet = new Set(folderEntryIds);
+    const currentFolderEntries = payload.entries.filter(
+      (entry) => entry.folderId === folderId,
+    );
+
+    if (
+      folderEntryIds.length !== currentFolderEntries.length ||
+      folderEntryIdSet.size !== folderEntryIds.length ||
+      currentFolderEntries.some((entry) => !folderEntryIdSet.has(entry.id))
+    ) {
+      return;
+    }
+
+    const nextFolderEntryIds = folderEntryIds.slice();
+    const nextEntryIds = payload.entries.map((entry) => {
+      if (entry.folderId !== folderId) {
+        return entry.id;
+      }
+
+      return nextFolderEntryIds.shift() ?? entry.id;
+    });
+
+    await handleReorder(nextEntryIds);
+  }
+
   async function handleSettingsChange(nextSettings: VaultSettings) {
     const previousLanguage = language;
 
@@ -559,11 +590,13 @@ function AppContent({
                   folders={controller.payload.folders}
                   entries={controller.payload.entries}
                   busy={controller.busy}
+                  dragEnabled={supportsEntryReorder()}
                   onCreateFolder={handleCreateFolder}
                   onUpdateFolder={handleUpdateFolder}
                   onDeleteFolder={handleDeleteFolder}
                   onOpenEntry={handleOpenFolderEntry}
                   onCreateEntryInFolder={handleCreateEntryInFolder}
+                  onReorderFolderEntries={handleReorderFolderEntries}
                   onCopyUsername={(entry) => handleCopy(entry.username)}
                   onCopyPassword={(entry) => handleCopy(entry.password)}
                 />
