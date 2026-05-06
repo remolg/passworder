@@ -1,46 +1,84 @@
 # Passworder
 
-**Passworder**, gizlilik odaklı ve tamamen çevrimdışı çalışan modern bir masaüstü şifre yöneticisidir. Verileriniz buluta gönderilmez; yalnızca kendi cihazınızda, şifrelenmiş şekilde saklanır.
+Passworder, gizlilik ve yerel veri güvenliği odağında geliştirilmiş bir masaüstü şifre yöneticisidir. Uygulama internet bağlantısı, kullanıcı hesabı, bulut senkronizasyonu veya harici servis gerektirmeden çalışır. Kasa verileri yalnızca kullanıcının kendi cihazında, şifrelenmiş biçimde saklanır.
 
-![Passworder ekran görüntüsü](src/assets/readme/3.png)
+![Passworder kasa ekranı](src/assets/readme/3.png)
 
-## İndir ve Kullan
+## Kullanım
 
-Windows kullanıcıları uygulamayı GitHub **Releases** bölümünden indirebilir.
+Windows kullanıcıları uygulamayı GitHub Releases bölümünden indirebilir.
 
-- **Kurulumlu sürüm:** `Passworder-Setup-0.1.0.exe` dosyasını indirip çalıştırın.
-- **Taşınabilir sürüm:** `Passworder-Portable-0.1.0-win-x64.zip` dosyasını indirin, zipten çıkarın ve `Passworder.exe` dosyasını çalıştırın.
-- Uygulama tamamen yerel çalışır; internet bağlantısı veya hesap gerekmez.
+- Kurulumlu sürüm için `Passworder-Setup` dosyasını çalıştırın.
+- Taşınabilir sürüm için `Passworder-Portable` arşivini çıkarın ve `Passworder.exe` dosyasını açın.
+- Uygulama tamamen yerel çalışır; hesap oluşturma veya internet bağlantısı gerekmez.
+- Ana şifre unutulursa kasa içeriği geri alınamaz. Bu bilgi güvenlik nedeniyle hiçbir yerde saklanmaz.
 
-## Temel Özellikler
+## Özellikler
 
-### Maksimum Güvenlik ve Gizlilik
+### Yerel ve Şifreli Kasa
 
-- **Offline-first mimari:** Sunucu, bulut senkronizasyonu veya telemetri yoktur.
-- **Güçlü şifreleme:** Kasa verileri `AES-256-GCM` ile korunur; kasa anahtarı ana şifreden `scrypt` ile türetilir.
-- **Yerel depolama:** Veriler diskte yalnızca şifrelenmiş biçimde tutulur.
+- Kasa verileri cihazda şifrelenmiş JSON dosyası olarak tutulur.
+- Anahtar türetme işlemi `scrypt` ile yapılır.
+- Kasa içeriği `AES-256-GCM` ile korunur.
+- Sunucu, telemetri, bulut yedekleme veya uzaktan erişim mekanizması bulunmaz.
 
-### Akıllı Araçlar
+### Kayıt Yönetimi
 
-- **Şifre üretici:** Uzunluk ve karakter seçenekleriyle güçlü şifreler oluşturur.
-- **Otomatik kilit:** Belirlenen süre işlem yapılmazsa kasayı kilitler.
-- **Pano temizleme:** Kopyalanan şifreleri belirlenen süre sonunda panodan temizler.
+- Servis adı, kullanıcı adı, şifre, URL, not ve etiket alanlarıyla kayıt oluşturma.
+- Klasörler ile kayıtları gruplama.
+- Kayıt ve klasör sıralamasını sürükle-bırak yöntemiyle düzenleme.
+- Servis ve klasör logoları için yerleşik logo seçici.
+- Hızlı arama ve etiket filtreleme.
 
-### Modern Arayüz
+### Güvenlik Araçları
 
-- Electron, React, TypeScript ve Tailwind CSS ile geliştirilmiş sade masaüstü deneyimi.
-- Hızlı arama, tek tıkla kopyalama ve kolay kayıt yönetimi.
-
-## Teknik Detaylar
-
-- **Framework:** Electron + React + TypeScript
-- **Arayüz:** Tailwind CSS
-- **Kripto:** Node.js Crypto (`scrypt`, `AES-256-GCM`)
-- **Depolama:** Yerel şifrelenmiş JSON tabanlı kasa
-
+- Ayarlanabilir uzunluk ve karakter seçenekleriyle şifre üretici.
+- Belirlenen süre sonunda otomatik kasa kilitleme.
+- Kopyalanan kullanıcı adı veya şifreyi belirli süre sonra panodan temizleme.
+- Verileri dışa aktarma ve daha sonra içe aktarma desteği.
 
 ![Passworder detay ekranı](src/assets/readme/1.png)
 
+## Teknik Yapı
+
+| Alan | Kullanılan Teknoloji |
+| :--- | :--- |
+| Masaüstü | Electron |
+| Arayüz | React, TypeScript |
+| Stil | Tailwind CSS |
+| Kripto | Node.js Crypto |
+| Paketleme | electron-builder |
+| Depolama | Yerel şifrelenmiş JSON kasa |
+
+## Geliştirme
+
+Projeyi yerel geliştirme ortamında çalıştırmak için:
+
+```bash
+npm install
+npm run dev
+```
+
+Üretim derlemesi almak için:
+
+```bash
+npm run build
+```
+
+Windows paketi oluşturmak için:
+
+```bash
+npm run package:win
+```
+
+## Güvenlik Notları
+
+- Ana şifre uygulama tarafından saklanmaz.
+- Kasa dosyasının yedeğini almak kullanıcının sorumluluğundadır.
+- Bulut senkronizasyonu kullanılacaksa şifrelenmiş kasa dosyasının hangi ortamda tutulacağı kullanıcı tarafından dikkatle seçilmelidir.
+- Güncellemeler yayınlanabilir; en güncel kurulum dosyaları için GitHub Releases bölümü takip edilmelidir.
+
+![Passworder ek ekran](src/assets/readme/2.png)
 
 ## İletişim
 
@@ -52,4 +90,4 @@ Windows kullanıcıları uygulamayı GitHub **Releases** bölümünden indirebil
 
 ---
 
-Güvenliğiniz sizin elinizde. Passworder ile şifrelerinizi yerel ve şifreli bir kasada saklayın.
+Passworder, şifrelerini yerel ve şifreli bir kasada saklamak isteyen kullanıcılar için hazırlanmış modern bir masaüstü uygulamasıdır.
