@@ -643,7 +643,6 @@ function FolderList({
 
                 itemRefs.current.delete(folder.id);
               }}
-              onDelete={() => onDeleteFolder(folder)}
               onDragHandlePointerDown={
                 reorderingEnabled
                   ? (event) => handleDragHandlePointerDown(event, folder.id)
@@ -739,9 +738,8 @@ function FolderCard({
       </button>
 
       {reorderingEnabled ? (
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.04] bg-white/[0.025] text-muted-foreground/75 transition-colors group-hover:bg-white/[0.04] group-hover:text-muted-foreground">
-        {reorderingEnabled ? (
-          onDragHandlePointerDown ? (
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.04] bg-white/[0.025] text-muted-foreground/75 transition-colors group-hover:bg-white/[0.04] group-hover:text-muted-foreground">
+          {onDragHandlePointerDown ? (
             <button
               type="button"
               onPointerDown={onDragHandlePointerDown}
@@ -755,9 +753,8 @@ function FolderCard({
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]">
               <GripVertical className="h-4 w-4" />
             </div>
-          )
-        ) : null}
-      </div>
+          )}
+        </div>
       ) : null}
     </div>
   );
