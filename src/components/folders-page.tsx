@@ -136,10 +136,20 @@ export function FoldersPage({
 
   async function handleDeleteFolder(folder: VaultFolder) {
     if (!window.confirm(t("folders.deleteConfirm", { name: folder.name }))) {
-      return;
+      return false;
     }
 
-    await onDeleteFolder(folder.id);
+    const success = await onDeleteFolder(folder.id);
+    if (success) {
+      setEditingFolder((currentFolder) =>
+        currentFolder?.id === folder.id ? null : currentFolder,
+      );
+      setSelectedFolderId((currentFolderId) =>
+        currentFolderId === folder.id ? null : currentFolderId,
+      );
+    }
+
+    return success;
   }
 
   async function handleUpdateFolder(input: {
@@ -293,8 +303,6 @@ export function FoldersPage({
               dragEnabled={folderDragEnabled}
               entryCountByFolderId={entryCountByFolderId}
               folders={folders}
-              onDeleteFolder={(folder) => void handleDeleteFolder(folder)}
-              onEditFolder={setEditingFolder}
               onOpenFolder={setSelectedFolderId}
               onReorder={onReorderFolders}
             />
@@ -307,6 +315,7 @@ export function FoldersPage({
         open={Boolean(editingFolder)}
         busy={busy}
         onClose={() => setEditingFolder(null)}
+        onDelete={handleDeleteFolder}
         onSave={handleUpdateFolder}
       />
     </section>
@@ -319,8 +328,6 @@ interface FolderListProps {
   dragEnabled: boolean;
   onReorder: (folderIds: string[]) => Promise<void> | void;
   onOpenFolder: (folderId: string) => void;
-  onEditFolder: (folder: VaultFolder) => void;
-  onDeleteFolder: (folder: VaultFolder) => void;
 }
 
 function FolderList({
@@ -329,8 +336,6 @@ function FolderList({
   dragEnabled,
   onReorder,
   onOpenFolder,
-  onEditFolder,
-  onDeleteFolder,
 }: FolderListProps) {
   const { t } = useI18n();
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
@@ -618,8 +623,6 @@ function FolderList({
                 dragHandleLabel={t("folders.reorderFolder")}
                 entryCount={entryCount}
                 folder={folder}
-                onDelete={() => onDeleteFolder(folder)}
-                onEdit={() => onEditFolder(folder)}
                 onOpen={() => onOpenFolder(folder.id)}
                 reorderingEnabled={reorderingEnabled}
               />
@@ -646,7 +649,6 @@ function FolderList({
                   ? (event) => handleDragHandlePointerDown(event, folder.id)
                   : undefined
               }
-              onEdit={() => onEditFolder(folder)}
               onOpen={() => onOpenFolder(folder.id)}
               reorderingEnabled={reorderingEnabled}
             />
@@ -670,8 +672,6 @@ function FolderList({
             dragHandleLabel={t("folders.reorderFolder")}
             entryCount={entryCountByFolderId.get(draggedFolder.id) ?? 0}
             folder={draggedFolder}
-            onDelete={() => onDeleteFolder(draggedFolder)}
-            onEdit={() => onEditFolder(draggedFolder)}
             onOpen={() => onOpenFolder(draggedFolder.id)}
             reorderingEnabled={reorderingEnabled}
           />
@@ -688,9 +688,7 @@ interface FolderCardProps {
   entryCount: number;
   folder: VaultFolder;
   itemRef?: (node: HTMLDivElement | null) => void;
-  onDelete: () => void;
   onDragHandlePointerDown?: (event: ReactPointerEvent<HTMLButtonElement>) => void;
-  onEdit: () => void;
   onOpen: () => void;
   reorderingEnabled: boolean;
 }
@@ -702,9 +700,7 @@ function FolderCard({
   entryCount,
   folder,
   itemRef,
-  onDelete,
   onDragHandlePointerDown,
-  onEdit,
   onOpen,
   reorderingEnabled,
 }: FolderCardProps) {
@@ -742,7 +738,8 @@ function FolderCard({
         </span>
       </button>
 
-      <div className="flex h-9 shrink-0 items-center gap-0.5 rounded-[10px] bg-white/[0.025] px-1 text-muted-foreground/75 transition-colors group-hover:bg-white/[0.04] group-hover:text-muted-foreground">
+      {reorderingEnabled ? (
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.04] bg-white/[0.025] text-muted-foreground/75 transition-colors group-hover:bg-white/[0.04] group-hover:text-muted-foreground">
         {reorderingEnabled ? (
           onDragHandlePointerDown ? (
             <button
@@ -760,26 +757,8 @@ function FolderCard({
             </div>
           )
         ) : null}
-
-        <button
-          type="button"
-          onClick={onEdit}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-colors hover:bg-white/[0.06] hover:text-foreground"
-          aria-label={t("folders.editFolder")}
-          title={t("folders.editFolder")}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] transition-colors hover:bg-destructive/12 hover:text-destructive"
-          aria-label={t("folders.deleteFolder")}
-          title={t("folders.deleteFolder")}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
       </div>
+      ) : null}
     </div>
   );
 }
@@ -1192,6 +1171,7 @@ interface FolderEditDialogProps {
   open: boolean;
   busy: boolean;
   onClose: () => void;
+  onDelete: (folder: VaultFolder) => Promise<boolean> | boolean;
   onSave: (input: { id: string; name: string; logoId?: string }) => Promise<boolean> | boolean;
 }
 
@@ -1200,6 +1180,7 @@ function FolderEditDialog({
   open,
   busy,
   onClose,
+  onDelete,
   onSave,
 }: FolderEditDialogProps) {
   const { t } = useI18n();
@@ -1229,6 +1210,14 @@ function FolderEditDialog({
       name: trimmedName,
       logoId,
     });
+  }
+
+  async function handleDelete() {
+    if (!folder) {
+      return;
+    }
+
+    await onDelete(folder);
   }
 
   return (
@@ -1313,13 +1302,25 @@ function FolderEditDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-white/[0.05] px-5 py-4">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {t("common.cancel")}
+        <DialogFooter className="border-t border-white/[0.05] px-5 py-4 sm:items-center sm:justify-between">
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => void handleDelete()}
+            disabled={busy || !folder}
+            className="sm:mr-auto"
+          >
+            <Trash2 className="h-4 w-4" />
+            {t("folders.deleteFolder")}
           </Button>
-          <Button type="button" onClick={() => void handleSave()} disabled={busy || !name.trim()}>
-            {t("folders.saveEdit")}
-          </Button>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="button" onClick={() => void handleSave()} disabled={busy || !name.trim()}>
+              {t("folders.saveEdit")}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
