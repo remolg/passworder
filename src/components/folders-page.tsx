@@ -1271,11 +1271,16 @@ function FolderFormDialog({
           />
         </div>
 
-        <DialogFooter className="border-t border-white/[0.05] px-5 py-4">
-          <Button type="button" variant="ghost" onClick={onClose}>
+        <DialogFooter className="flex-row items-center justify-end gap-2 border-t border-white/[0.05] px-5 py-4">
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button type="button" onClick={() => void handleSave()} disabled={busy || !name.trim()}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void handleSave()}
+            disabled={busy || !name.trim()}
+          >
             {t("folders.create")}
           </Button>
         </DialogFooter>
@@ -1351,22 +1356,27 @@ function FolderEditDialog({
           />
         </div>
 
-        <DialogFooter className="border-t border-white/[0.05] px-5 py-4 sm:items-center sm:justify-between">
-          <Button
+        <DialogFooter className="flex-row items-center justify-between gap-3 border-t border-white/[0.05] px-5 py-4">
+          <button
             type="button"
-            variant="destructive"
             onClick={() => void handleDelete()}
             disabled={busy || !folder}
-            className="sm:mr-auto"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50"
+            aria-label={t("folders.deleteFolder")}
+            title={t("folders.deleteFolder")}
           >
             <Trash2 className="h-4 w-4" />
-            {t("folders.deleteFolder")}
-          </Button>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="ghost" onClick={onClose}>
+          </button>
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               {t("common.cancel")}
             </Button>
-            <Button type="button" onClick={() => void handleSave()} disabled={busy || !name.trim()}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleSave()}
+              disabled={busy || !name.trim()}
+            >
               {t("folders.saveEdit")}
             </Button>
           </div>
