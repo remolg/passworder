@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 let entrySecretCopiedSubscriptionId = 0;
 const entrySecretCopiedSubscriptions = new Map();
+let updateDownloadSubscriptionId = 0;
+const updateDownloadSubscriptions = new Map();
 
 contextBridge.exposeInMainWorld("passworder", {
   getStatus: () => ipcRenderer.invoke("vault:get-status"),
@@ -50,6 +52,33 @@ contextBridge.exposeInMainWorld("passworder", {
     return Promise.resolve();
   },
   getUpdateInfo: () => ipcRenderer.invoke("app:get-update-info"),
+  getUpdateDownloadState: () =>
+    ipcRenderer.invoke("app:get-update-download-state"),
+  downloadUpdate: () => ipcRenderer.invoke("app:download-update"),
+  installUpdate: () => ipcRenderer.invoke("app:install-update"),
+  onUpdateDownloadProgress: (callback) => {
+    if (typeof callback !== "function") {
+      return null;
+    }
+
+    const subscriptionId = ++updateDownloadSubscriptionId;
+    const listener = (_event, payload) => {
+      callback(payload);
+    };
+
+    updateDownloadSubscriptions.set(subscriptionId, listener);
+    ipcRenderer.on("app:update-download-progress", listener);
+    return subscriptionId;
+  },
+  offUpdateDownloadProgress: (subscriptionId) => {
+    const listener = updateDownloadSubscriptions.get(subscriptionId);
+    if (!listener) {
+      return;
+    }
+
+    ipcRenderer.removeListener("app:update-download-progress", listener);
+    updateDownloadSubscriptions.delete(subscriptionId);
+  },
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),
   openExternalUrl: (url) => ipcRenderer.invoke("window:open-external", url),

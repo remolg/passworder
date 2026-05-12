@@ -19,6 +19,21 @@ export interface AppUpdateInfo {
   downloadName?: string;
 }
 
+export type UpdateDownloadStatus =
+  | "idle"
+  | "downloading"
+  | "ready"
+  | "installing"
+  | "error";
+
+export interface UpdateDownloadState {
+  status: UpdateDownloadStatus;
+  progress: number;
+  latestVersion?: string;
+  downloadName?: string;
+  error?: string;
+}
+
 export interface EntrySecretCopiedEvent {
   entryId: string;
   field: CopyableEntryField;
@@ -47,6 +62,13 @@ export interface DesktopVaultApi {
   offEntrySecretCopied?: (subscriptionId: number) => void;
   setShortcutsSuspended?: (suspended: boolean) => Promise<void>;
   getUpdateInfo?: () => Promise<AppUpdateInfo>;
+  getUpdateDownloadState?: () => Promise<UpdateDownloadState>;
+  downloadUpdate?: () => Promise<UpdateDownloadState>;
+  installUpdate?: () => Promise<UpdateDownloadState>;
+  onUpdateDownloadProgress?: (
+    callback: (state: UpdateDownloadState) => void,
+  ) => number | null;
+  offUpdateDownloadProgress?: (subscriptionId: number) => void;
   minimizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
   openExternalUrl: (url: string) => Promise<void>;

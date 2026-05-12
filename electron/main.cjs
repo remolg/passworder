@@ -1,3 +1,5 @@
+const fs = require("node:fs");
+const fsPromises = require("node:fs/promises");
 const path = require("node:path");
 
 const {
@@ -19,12 +21,18 @@ let tray = null;
 let isQuitting = false;
 let updateInfoCache = null;
 let updateInfoCheckedAt = 0;
+let updateDownloadState = {
+  status: "idle",
+  progress: 0,
+};
+let updateDownloadPromise = null;
 
 const isHiddenLaunch = process.argv.includes("--hidden");
 const UPDATE_CHECK_URL =
   "https://api.github.com/repos/remolg/passworder/releases/latest";
 const UPDATE_RELEASE_URL = "https://github.com/remolg/passworder/releases/latest";
 const UPDATE_CACHE_TTL_MS = 30 * 60 * 1000;
+const UPDATE_DOWNLOAD_DIR = "updates";
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
@@ -61,6 +69,10 @@ function getVaultStoragePath() {
 function getDefaultExportPath() {
   const date = new Date().toISOString().slice(0, 10);
   return path.join(app.getPath("documents"), `passworder-export-${date}.json`);
+}
+
+function getUpdateDownloadDirectory() {
+  return path.join(app.getPath("userData"), UPDATE_DOWNLOAD_DIR);
 }
 
 function normalizeVersion(version) {
@@ -203,6 +215,212 @@ async function getUpdateInfo() {
 
   updateInfoCheckedAt = now;
   return updateInfoCache;
+}
+
+function toRendererUpdateDownloadState(state = updateDownloadState) {
+  return {
+    status: state.status,
+    progress: state.progress,
+    downloadName: state.downloadName,
+    latestVersion: state.latestVersion,
+    error: state.error,
+  };
+}
+
+function broadcastUpdateDownloadState() {
+  mainWindow?.webContents.send(
+    "app:update-download-progress",
+    toRendererUpdateDownloadState(),
+  );
+}
+
+function setUpdateDownloadState(nextState) {
+  updateDownloadState = {
+    ...updateDownloadState,
+    ...nextState,
+  };
+  broadcastUpdateDownloadState();
+  return toRendererUpdateDownloadState();
+}
+
+function sanitizeDownloadName(name) {
+  const safeName = String(name ?? "")
+    .trim()
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, "-")
+    .replace(/\s+/g, " ");
+
+  return safeName || "Passworder-Update.exe";
+}
+
+function validateUpdateDownloadUrl(downloadUrl) {
+  try {
+    const parsedUrl = new URL(downloadUrl);
+    return parsedUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function writeChunk(fileStream, chunk) {
+  return new Promise((resolve) => {
+    if (fileStream.write(Buffer.from(chunk))) {
+      resolve();
+      return;
+    }
+
+    fileStream.once("drain", resolve);
+  });
+}
+
+function closeFileStream(fileStream) {
+  return new Promise((resolve, reject) => {
+    fileStream.once("error", reject);
+    fileStream.end(resolve);
+  });
+}
+
+async function downloadUpdateInstaller() {
+  if (updateDownloadPromise) {
+    return updateDownloadPromise;
+  }
+
+  updateDownloadPromise = doDownloadUpdateInstaller().finally(() => {
+    updateDownloadPromise = null;
+  });
+
+  return updateDownloadPromise;
+}
+
+async function doDownloadUpdateInstaller() {
+  const updateInfo = await getUpdateInfo();
+
+  if (!updateInfo.updateAvailable || !updateInfo.downloadUrl) {
+    setUpdateDownloadState({
+      status: "error",
+      progress: 0,
+      error: "errors.updateDownloadUnavailable",
+    });
+    throw new Error("errors.updateDownloadUnavailable");
+  }
+
+  if (!validateUpdateDownloadUrl(updateInfo.downloadUrl)) {
+    setUpdateDownloadState({
+      status: "error",
+      progress: 0,
+      error: "errors.updateDownloadUnavailable",
+    });
+    throw new Error("errors.updateDownloadUnavailable");
+  }
+
+  const downloadDirectory = getUpdateDownloadDirectory();
+  const downloadName = sanitizeDownloadName(updateInfo.downloadName);
+  const downloadPath = path.join(downloadDirectory, downloadName);
+  const temporaryPath = `${downloadPath}.download`;
+
+  await fsPromises.mkdir(downloadDirectory, { recursive: true });
+  await fsPromises.rm(temporaryPath, { force: true });
+
+  setUpdateDownloadState({
+    status: "downloading",
+    progress: 0,
+    downloadName,
+    latestVersion: updateInfo.latestVersion,
+    error: undefined,
+    filePath: undefined,
+  });
+
+  const response = await fetch(updateInfo.downloadUrl, {
+    headers: {
+      "User-Agent": "Passworder Update Download",
+    },
+  });
+
+  if (!response.ok || !response.body) {
+    setUpdateDownloadState({
+      status: "error",
+      progress: 0,
+      error: "errors.updateDownloadFailed",
+    });
+    throw new Error("errors.updateDownloadFailed");
+  }
+
+  const totalBytes = Number(response.headers.get("content-length")) || 0;
+  let receivedBytes = 0;
+  let lastBroadcastAt = 0;
+  const reader = response.body.getReader();
+  const fileStream = fs.createWriteStream(temporaryPath);
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      receivedBytes += value.byteLength;
+      await writeChunk(fileStream, value);
+
+      const progress = totalBytes
+        ? Math.max(1, Math.min(99, Math.round((receivedBytes / totalBytes) * 100)))
+        : 0;
+      const now = Date.now();
+
+      if (now - lastBroadcastAt > 250) {
+        lastBroadcastAt = now;
+        setUpdateDownloadState({
+          status: "downloading",
+          progress,
+        });
+      }
+    }
+
+    await closeFileStream(fileStream);
+    await fsPromises.rm(downloadPath, { force: true });
+    await fsPromises.rename(temporaryPath, downloadPath);
+
+    return setUpdateDownloadState({
+      status: "ready",
+      progress: 100,
+      downloadName,
+      latestVersion: updateInfo.latestVersion,
+      filePath: downloadPath,
+      error: undefined,
+    });
+  } catch (error) {
+    fileStream.destroy();
+    await fsPromises.rm(temporaryPath, { force: true }).catch(() => {});
+    setUpdateDownloadState({
+      status: "error",
+      progress: 0,
+      error: "errors.updateDownloadFailed",
+    });
+    throw error;
+  }
+}
+
+async function installDownloadedUpdate() {
+  if (updateDownloadState.status !== "ready" || !updateDownloadState.filePath) {
+    throw new Error("errors.updateInstallerMissing");
+  }
+
+  await fsPromises.access(updateDownloadState.filePath);
+  const launchError = await shell.openPath(updateDownloadState.filePath);
+
+  if (launchError) {
+    throw new Error("errors.updateInstallerLaunchFailed");
+  }
+
+  setUpdateDownloadState({
+    status: "installing",
+    progress: 100,
+  });
+
+  setTimeout(() => {
+    isQuitting = true;
+    app.quit();
+  }, 1_000);
+
+  return toRendererUpdateDownloadState();
 }
 
 function createMainWindow() {
@@ -487,6 +705,11 @@ function registerIpcHandlers() {
     event.returnValue = true;
   });
   ipcMain.handle("app:get-update-info", async () => getUpdateInfo());
+  ipcMain.handle("app:get-update-download-state", async () =>
+    toRendererUpdateDownloadState(),
+  );
+  ipcMain.handle("app:download-update", async () => downloadUpdateInstaller());
+  ipcMain.handle("app:install-update", async () => installDownloadedUpdate());
   ipcMain.handle("window:minimize", async () => {
     mainWindow?.minimize();
   });

@@ -30,6 +30,10 @@ const EN_TRANSLATIONS = {
   "status.updateAvailableTitle": "New version available. Click to update.",
   "status.downloadUpdate": "Download update",
   "status.downloadUpdateTitle": "New version available. Click to download.",
+  "status.downloadingUpdate": "Downloading {progress}%",
+  "status.installUpdate": "Install update",
+  "status.installingUpdate": "Opening installer",
+  "status.updateDownloadFailed": "Update failed",
   "dialog.deleteEntryTitle": "Delete entry?",
   "dialog.deleteEntryConfirm": "Are you sure you want to delete {service}?",
   "unlock.badgeLocked": "Vault Locked",
@@ -202,6 +206,11 @@ const EN_TRANSLATIONS = {
     "Electron runtime was not found. Start the app as a desktop app with `npm run dev`.",
   "errors.desktopRestartRequired":
     "Electron bridge was updated. Fully restart the desktop app to use the latest actions.",
+  "errors.updateDownloadUnavailable":
+    "Update installer could not be found.",
+  "errors.updateDownloadFailed": "Update download failed.",
+  "errors.updateInstallerMissing": "Downloaded installer was not found.",
+  "errors.updateInstallerLaunchFailed": "Update installer could not be opened.",
   "errors.importFileInvalid":
     "The selected file is not a valid Passworder export.",
   "errors.vaultLocked": "Vault is locked.",
@@ -273,6 +282,10 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "status.updateAvailableTitle": "Yeni sürüm mevcut. Güncellemek için tıkla.",
   "status.downloadUpdate": "Yeni sürümü indir",
   "status.downloadUpdateTitle": "Yeni sürüm mevcut. İndirmek için tıkla.",
+  "status.downloadingUpdate": "İndiriliyor %{progress}",
+  "status.installUpdate": "Güncellemeyi kur",
+  "status.installingUpdate": "Kurulum açılıyor",
+  "status.updateDownloadFailed": "Güncelleme başarısız",
   "dialog.deleteEntryTitle": "Kayıt silinsin mi?",
   "dialog.deleteEntryConfirm":
     "{service} kaydını silmek istediğinize emin misiniz?",
@@ -447,6 +460,11 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Electron çalışma zamanı bulunamadı. Uygulamayı masaüstü olarak `npm run dev` ile başlatın.",
   "errors.desktopRestartRequired":
     "Electron köprüsü güncellendi. En yeni işlemleri kullanmak için masaüstü uygulamayı tamamen yeniden başlatın.",
+  "errors.updateDownloadUnavailable":
+    "Güncelleme kurulum dosyası bulunamadı.",
+  "errors.updateDownloadFailed": "Güncelleme indirilemedi.",
+  "errors.updateInstallerMissing": "İndirilen kurulum dosyası bulunamadı.",
+  "errors.updateInstallerLaunchFailed": "Güncelleme kurucusu açılamadı.",
   "errors.importFileInvalid":
     "Seçilen dosya geçerli bir Passworder aktarım dosyası değil.",
   "errors.vaultLocked": "Kasa kilitli.",

@@ -9,7 +9,12 @@ import {
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
-import { AppUpdateInfo, DesktopVaultApi, EntrySecretCopiedEvent } from "@/types/desktop";
+import {
+  AppUpdateInfo,
+  DesktopVaultApi,
+  EntrySecretCopiedEvent,
+  UpdateDownloadState,
+} from "@/types/desktop";
 
 export function isDesktopRuntime() {
   return typeof window !== "undefined" && typeof window.passworder !== "undefined";
@@ -135,6 +140,43 @@ export const appUpdates = {
     }
 
     return getUpdateInfo() as Promise<AppUpdateInfo>;
+  },
+  async getDownloadState() {
+    const getUpdateDownloadState = window.passworder?.getUpdateDownloadState;
+    if (!getUpdateDownloadState) {
+      return null;
+    }
+
+    return getUpdateDownloadState() as Promise<UpdateDownloadState>;
+  },
+  async download() {
+    const downloadUpdate = window.passworder?.downloadUpdate;
+    if (!downloadUpdate) {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    return downloadUpdate() as Promise<UpdateDownloadState>;
+  },
+  async install() {
+    const installUpdate = window.passworder?.installUpdate;
+    if (!installUpdate) {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    return installUpdate() as Promise<UpdateDownloadState>;
+  },
+  subscribeDownload(callback: (state: UpdateDownloadState) => void) {
+    const subscribe = window.passworder?.onUpdateDownloadProgress;
+    if (!subscribe) {
+      return () => {};
+    }
+
+    const subscriptionId = subscribe(callback);
+    return () => {
+      if (typeof subscriptionId === "number") {
+        window.passworder?.offUpdateDownloadProgress?.(subscriptionId);
+      }
+    };
   },
 };
 
