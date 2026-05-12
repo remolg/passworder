@@ -329,6 +329,7 @@ function enableAutoLaunch() {
 }
 
 const registeredEntryShortcuts = new Set();
+let entryShortcutsSuspended = false;
 
 function unregisterEntryShortcuts() {
   for (const accelerator of registeredEntryShortcuts) {
@@ -341,7 +342,15 @@ function unregisterEntryShortcuts() {
 function refreshEntryShortcuts() {
   unregisterEntryShortcuts();
 
+  if (entryShortcutsSuspended) {
+    return;
+  }
+
   for (const assignment of vaultService.getShortcutAssignments()) {
+    if (assignment.kind !== "keyboard") {
+      continue;
+    }
+
     const registered = globalShortcut.register(assignment.accelerator, () => {
       void vaultService
         .copyEntrySecret(assignment.entryId, assignment.field)
@@ -357,6 +366,17 @@ function refreshEntryShortcuts() {
       registeredEntryShortcuts.add(assignment.accelerator);
     }
   }
+}
+
+function setEntryShortcutsSuspended(suspended) {
+  entryShortcutsSuspended = Boolean(suspended);
+
+  if (entryShortcutsSuspended) {
+    unregisterEntryShortcuts();
+    return;
+  }
+
+  refreshEntryShortcuts();
 }
 
 function registerIpcHandlers() {
@@ -455,6 +475,9 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:copy-to-clipboard", async (_event, value, clearAfterSeconds) =>
     vaultService.copyToClipboard(value, clearAfterSeconds),
   );
+  ipcMain.handle("shortcuts:set-suspended", async (_event, suspended) => {
+    setEntryShortcutsSuspended(suspended);
+  });
   ipcMain.handle("app:get-update-info", async () => getUpdateInfo());
   ipcMain.handle("window:minimize", async () => {
     mainWindow?.minimize();

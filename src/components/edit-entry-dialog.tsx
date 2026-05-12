@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
-import { EntryFormValues, VaultEntry } from "@/types/vault";
+import { EntryFormValues, ShortcutFormField, VaultEntry } from "@/types/vault";
 
 interface EditEntryDialogProps {
   entry: VaultEntry | null;
@@ -19,6 +19,8 @@ interface EditEntryDialogProps {
   busy: boolean;
   onClose: () => void;
   onCopyPassword?: (value: string) => Promise<boolean>;
+  isShortcutAvailable?: (shortcut: string, field: ShortcutFormField) => boolean;
+  onShortcutRejected?: (messageKey: string) => void;
   onSave: (values: EntryFormValues) => void;
   onGeneratePassword: (apply: (password: string) => void) => void;
 }
@@ -29,6 +31,8 @@ export function EditEntryDialog({
   busy,
   onClose,
   onCopyPassword,
+  isShortcutAvailable,
+  onShortcutRejected,
   onSave,
   onGeneratePassword,
 }: EditEntryDialogProps) {
@@ -78,6 +82,8 @@ export function EditEntryDialog({
               }))
             }
             onCopyPassword={onCopyPassword}
+            isShortcutAvailable={isShortcutAvailable}
+            onShortcutRejected={onShortcutRejected}
             onGeneratePassword={() =>
               onGeneratePassword((password) =>
                 setValues((current) => ({

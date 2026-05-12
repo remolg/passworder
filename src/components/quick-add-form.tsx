@@ -3,7 +3,7 @@ import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { EntryFormFields } from "@/components/entry-form-fields";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { EntryFormValues, VaultFolder } from "@/types/vault";
+import { EntryFormValues, ShortcutFormField, VaultFolder } from "@/types/vault";
 
 interface QuickAddFormProps {
   values: EntryFormValues;
@@ -12,6 +12,8 @@ interface QuickAddFormProps {
   onBack: () => void;
   onChange: (field: keyof EntryFormValues, value: string) => void;
   onCopyPassword?: (value: string) => Promise<boolean>;
+  isShortcutAvailable?: (shortcut: string, field: ShortcutFormField) => boolean;
+  onShortcutRejected?: (messageKey: string) => void;
   onSubmit: () => void;
   onGeneratePassword: () => void;
 }
@@ -23,6 +25,8 @@ export function QuickAddForm({
   onBack,
   onChange,
   onCopyPassword,
+  isShortcutAvailable,
+  onShortcutRejected,
   onSubmit,
   onGeneratePassword,
 }: QuickAddFormProps) {
@@ -59,6 +63,8 @@ export function QuickAddForm({
           folders={folders}
           onChange={onChange}
           onCopyPassword={onCopyPassword}
+          isShortcutAvailable={isShortcutAvailable}
+          onShortcutRejected={onShortcutRejected}
           onGeneratePassword={onGeneratePassword}
         />
       </div>

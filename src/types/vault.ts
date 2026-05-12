@@ -1,5 +1,6 @@
 export type AppLanguage = "en" | "tr";
 export type CopyableEntryField = "username" | "password";
+export type ShortcutFormField = "usernameShortcut" | "passwordShortcut";
 
 export interface EntryCopyFeedback {
   entryId: string;

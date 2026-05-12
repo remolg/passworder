@@ -160,3 +160,9 @@ export const entryCopyEvents = {
     };
   },
 };
+
+export const shortcutRuntime = {
+  async setSuspended(suspended: boolean) {
+    await window.passworder?.setShortcutsSuspended?.(suspended);
+  },
+};

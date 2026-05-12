@@ -28,6 +28,7 @@ import {
   appUpdates,
   entryCopyEvents,
   appWindow,
+  shortcutRuntime,
   supportsEntryReorder,
   supportsFolderReorder,
 } from "@/lib/desktop";
@@ -49,6 +50,7 @@ import {
   EntryMutationInput,
   FolderMutationInput,
   PasswordGeneratorOptions,
+  ShortcutFormField,
   VaultEntry,
   VaultSettings,
 } from "@/types/vault";
@@ -133,6 +135,12 @@ function AppContent({
   const [externalCopyFeedback, setExternalCopyFeedback] =
     useState<EntryCopyFeedback | null>(null);
   const [externalCopyNotice, setExternalCopyNotice] = useState<string | null>(null);
+  const [nestedShortcutsSuspended, setNestedShortcutsSuspended] = useState(false);
+  const [localStatus, setLocalStatus] = useState<{
+    key: string;
+    tone: "notice" | "error";
+    sequence: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!selectedEntry) {
@@ -190,6 +198,20 @@ function AppContent({
     };
   }, [externalCopyNotice, externalCopyFeedback?.sequence]);
 
+  useEffect(() => {
+    if (!localStatus) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setLocalStatus(null);
+    }, 2_400);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [localStatus?.sequence]);
+
   const autoLock = useAutoLock({
     enabled: Boolean(controller.payload),
     minutes:
@@ -197,11 +219,69 @@ function AppContent({
       controller.status.defaultAutoLockMinutes,
     onLock: () => controller.lockVault(false),
   });
-  const statusMessageKey = controller.error ?? externalCopyNotice ?? controller.notice;
+  const shortcutsSuspended =
+    Boolean(controller.payload) &&
+    (activeSection === "quick-add" ||
+      Boolean(selectedEntry) ||
+      nestedShortcutsSuspended);
+
+  useEffect(() => {
+    void shortcutRuntime.setSuspended(shortcutsSuspended);
+
+    return () => {
+      void shortcutRuntime.setSuspended(false);
+    };
+  }, [shortcutsSuspended]);
+
+  useEffect(() => {
+    if (!controller.payload || shortcutsSuspended) {
+      return;
+    }
+
+    function handleMouseDown(event: MouseEvent) {
+      const shortcut = mouseButtonToShortcut(event.button);
+      if (!shortcut) {
+        return;
+      }
+
+      const match = findShortcutEntry(controller.payload?.entries ?? [], shortcut);
+      if (!match) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const value = match.field === "username" ? match.entry.username : match.entry.password;
+      void handleCopy(value).then((success) => {
+        if (!success) {
+          return;
+        }
+
+        const sequence = Date.now();
+        setExternalCopyFeedback({
+          entryId: match.entry.id,
+          field: match.field,
+          sequence,
+        });
+        setExternalCopyNotice("notice.copiedToClipboard");
+      });
+    }
+
+    window.addEventListener("mousedown", handleMouseDown, true);
+    return () => {
+      window.removeEventListener("mousedown", handleMouseDown, true);
+    };
+  }, [controller.payload, shortcutsSuspended]);
+
+  const statusMessageKey =
+    controller.error ?? localStatus?.key ?? externalCopyNotice ?? controller.notice;
   const statusMessage = statusMessageKey
     ? resolveText(statusMessageKey)
     : undefined;
-  const statusTone: "notice" | "error" = controller.error ? "error" : "notice";
+  const statusTone: "notice" | "error" = controller.error
+    ? "error"
+    : localStatus?.tone ?? "notice";
   const availableTags = controller.payload
     ? collectAvailableTags(controller.payload.entries, language)
     : [];
@@ -223,6 +303,12 @@ function AppContent({
       setSelectedTag(null);
     }
   }, [availableTags, language, selectedTag]);
+
+  useEffect(() => {
+    if (activeSection !== "folders" && nestedShortcutsSuspended) {
+      setNestedShortcutsSuspended(false);
+    }
+  }, [activeSection, nestedShortcutsSuspended]);
 
   if (controller.loading) {
     return (
@@ -281,6 +367,39 @@ function AppContent({
   const filteredEntries = controller.payload.entries.filter((entry) =>
     matchesFilters(entry, searchTerm, selectedTag, language, folderNameById),
   );
+
+  function showLocalStatus(key: string, tone: "notice" | "error" = "notice") {
+    setLocalStatus({
+      key,
+      tone,
+      sequence: Date.now(),
+    });
+  }
+
+  function isShortcutAvailable(
+    entryId: string | undefined,
+    shortcut: string,
+    field: ShortcutFormField,
+  ) {
+    return !controller.payload?.entries.some((entry) => {
+      const sameUsernameShortcut = field === "usernameShortcut" && entry.id === entryId;
+      const samePasswordShortcut = field === "passwordShortcut" && entry.id === entryId;
+
+      if (!sameUsernameShortcut && entry.usernameShortcut === shortcut) {
+        return true;
+      }
+
+      if (!samePasswordShortcut && entry.passwordShortcut === shortcut) {
+        return true;
+      }
+
+      return false;
+    });
+  }
+
+  function handleShortcutRejected(messageKey: string) {
+    showLocalStatus(messageKey, "error");
+  }
 
   async function handleQuickAddSubmit() {
     const success = await controller.saveEntry(toMutationInput(quickAddValues));
@@ -600,6 +719,10 @@ function AppContent({
                       setActiveSection(entryDetailBackSection);
                     }}
                     onCopyPassword={handleCopy}
+                    isShortcutAvailable={(shortcut, field) =>
+                      isShortcutAvailable(selectedEntry.id, shortcut, field)
+                    }
+                    onShortcutRejected={handleShortcutRejected}
                     onDelete={handleDeleteRequest}
                     onSave={handleSaveEdit}
                   />
@@ -638,6 +761,7 @@ function AppContent({
                   dragEnabled={supportsEntryReorder()}
                   folderDragEnabled={supportsFolderReorder()}
                   externalCopyFeedback={externalCopyFeedback}
+                  onShortcutSuspendChange={setNestedShortcutsSuspended}
                   onCreateFolder={handleCreateFolder}
                   onUpdateFolder={handleUpdateFolder}
                   onDeleteFolder={handleDeleteFolder}
@@ -663,6 +787,10 @@ function AppContent({
                     }))
                   }
                   onCopyPassword={handleCopy}
+                  isShortcutAvailable={(shortcut, field) =>
+                    isShortcutAvailable(quickAddValues.id, shortcut, field)
+                  }
+                  onShortcutRejected={handleShortcutRejected}
                   onGeneratePassword={generateInlinePassword}
                   onSubmit={handleQuickAddSubmit}
                 />
@@ -795,6 +923,42 @@ function collectAvailableTags(entries: VaultEntry[], language: AppLanguage) {
 function normalizeFilterValue(value: string, language: AppLanguage) {
   const locale = language === "tr" ? "tr-TR" : "en-US";
   return value.trim().toLocaleLowerCase(locale);
+}
+
+function mouseButtonToShortcut(button: number) {
+  if (button === 1) {
+    return "MouseMiddle";
+  }
+
+  if (button === 3) {
+    return "MouseBack";
+  }
+
+  if (button === 4) {
+    return "MouseForward";
+  }
+
+  return "";
+}
+
+function findShortcutEntry(entries: VaultEntry[], shortcut: string) {
+  for (const entry of entries) {
+    if (entry.usernameShortcut === shortcut) {
+      return {
+        entry,
+        field: "username" as const,
+      };
+    }
+
+    if (entry.passwordShortcut === shortcut) {
+      return {
+        entry,
+        field: "password" as const,
+      };
+    }
+  }
+
+  return null;
 }
 
 function defaultGeneratorOptions(): PasswordGeneratorOptions {

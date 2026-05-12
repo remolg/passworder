@@ -45,6 +45,7 @@ export interface DesktopVaultApi {
     callback: (event: EntrySecretCopiedEvent) => void,
   ) => number | null;
   offEntrySecretCopied?: (subscriptionId: number) => void;
+  setShortcutsSuspended?: (suspended: boolean) => Promise<void>;
   getUpdateInfo?: () => Promise<AppUpdateInfo>;
   minimizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;

@@ -1,5 +1,6 @@
 import {
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   useEffect,
   useRef,
@@ -25,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { getLogoOption, LOGO_OPTIONS } from "@/lib/logo-catalog";
 import { cn } from "@/lib/utils";
-import { EntryFormValues, VaultFolder } from "@/types/vault";
+import { EntryFormValues, ShortcutFormField, VaultFolder } from "@/types/vault";
 
 interface EntryFormFieldsProps {
   values: EntryFormValues;
@@ -33,6 +34,8 @@ interface EntryFormFieldsProps {
   onChange: (field: keyof EntryFormValues, value: string) => void;
   onCopyPassword?: (value: string) => Promise<boolean>;
   onGeneratePassword?: () => void;
+  isShortcutAvailable?: (shortcut: string, field: ShortcutFormField) => boolean;
+  onShortcutRejected?: (messageKey: string) => void;
 }
 
 export function EntryFormFields({
@@ -41,11 +44,16 @@ export function EntryFormFields({
   onChange,
   onCopyPassword,
   onGeneratePassword,
+  isShortcutAvailable,
+  onShortcutRejected,
 }: EntryFormFieldsProps) {
   const { language, t } = useI18n();
   const [showPassword, setShowPassword] = useState(false);
   const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+  const [shortcutSectionOpen, setShortcutSectionOpen] = useState(
+    Boolean(values.usernameShortcut || values.passwordShortcut),
+  );
   const folderPickerRef = useRef<HTMLDivElement>(null);
   const copyFeedback = useCopyFeedback();
   const strength = getPasswordStrength(values.password);
@@ -54,6 +62,12 @@ export function EntryFormFields({
   const selectedLogo = getLogoOption(values.logoId);
   const selectedFolder =
     folders.find((folder) => folder.id === values.folderId) ?? null;
+
+  useEffect(() => {
+    if (values.usernameShortcut || values.passwordShortcut) {
+      setShortcutSectionOpen(true);
+    }
+  }, [values.usernameShortcut, values.passwordShortcut]);
 
   useEffect(() => {
     if (!folderPickerOpen) {
@@ -127,6 +141,31 @@ export function EntryFormFields({
   function handleFolderSelect(nextFolderId: string) {
     onChange("folderId", nextFolderId);
     setFolderPickerOpen(false);
+  }
+
+  function handleShortcutChange(field: ShortcutFormField, value: string) {
+    if (!value) {
+      onChange(field, "");
+      return;
+    }
+
+    const otherField =
+      field === "usernameShortcut" ? "passwordShortcut" : "usernameShortcut";
+    if (values[otherField] === value) {
+      onShortcutRejected?.("errors.shortcutDuplicate");
+      return;
+    }
+
+    if (isShortcutAvailable && !isShortcutAvailable(value, field)) {
+      onShortcutRejected?.("errors.shortcutDuplicate");
+      return;
+    }
+
+    onChange(field, value);
+  }
+
+  function handleShortcutRejected(messageKey: string) {
+    onShortcutRejected?.(messageKey);
   }
 
   return (
@@ -293,19 +332,6 @@ export function EntryFormFields({
         />
       </FieldGroup>
 
-      <FieldGroup label={t("fields.usernameShortcut")} htmlFor="usernameShortcut">
-        <ShortcutCaptureInput
-          id="usernameShortcut"
-          value={values.usernameShortcut}
-          onChange={(value) => onChange("usernameShortcut", value)}
-          placeholder={t("fields.shortcutPlaceholder")}
-          clearLabel={t("fields.clearShortcut")}
-        />
-        <p className="text-[11px] leading-5 text-muted-foreground">
-          {t("fields.shortcutHint")}
-        </p>
-      </FieldGroup>
-
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <Label
@@ -384,19 +410,6 @@ export function EntryFormFields({
         </div>
       </div>
 
-      <FieldGroup label={t("fields.passwordShortcut")} htmlFor="passwordShortcut">
-        <ShortcutCaptureInput
-          id="passwordShortcut"
-          value={values.passwordShortcut}
-          onChange={(value) => onChange("passwordShortcut", value)}
-          placeholder={t("fields.shortcutPlaceholder")}
-          clearLabel={t("fields.clearShortcut")}
-        />
-        <p className="text-[11px] leading-5 text-muted-foreground">
-          {t("fields.shortcutHint")}
-        </p>
-      </FieldGroup>
-
       <FieldGroup label={t("fields.notes")} htmlFor="notes">
         <Textarea
           id="notes"
@@ -419,6 +432,75 @@ export function EntryFormFields({
           {t("fields.tagsHint")}
         </p>
       </FieldGroup>
+
+      <div className="space-y-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
+        <button
+          type="button"
+          onClick={() => setShortcutSectionOpen((current) => !current)}
+          className="flex w-full items-center justify-between gap-3 text-left"
+          aria-expanded={shortcutSectionOpen}
+        >
+          <span className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <Keyboard className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[13px] font-semibold text-foreground">
+                {t("fields.shortcutSection")}
+              </span>
+              <span className="mt-1 block truncate text-[11px] text-muted-foreground">
+                {t("fields.shortcutSectionHint")}
+              </span>
+            </span>
+          </span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+              shortcutSectionOpen && "rotate-180",
+            )}
+          />
+        </button>
+
+        {shortcutSectionOpen ? (
+          <div className="space-y-4 border-t border-white/[0.06] pt-3">
+            <FieldGroup label={t("fields.usernameShortcut")} htmlFor="usernameShortcut">
+              <ShortcutCaptureInput
+                id="usernameShortcut"
+                value={values.usernameShortcut}
+                onChange={(value) => handleShortcutChange("usernameShortcut", value)}
+                onRejected={handleShortcutRejected}
+                placeholder={t("fields.shortcutPlaceholder")}
+                clearLabel={t("fields.clearShortcut")}
+                labels={{
+                  mouseBack: t("fields.mouseBack"),
+                  mouseForward: t("fields.mouseForward"),
+                  mouseMiddle: t("fields.mouseMiddle"),
+                }}
+              />
+            </FieldGroup>
+
+            <FieldGroup label={t("fields.passwordShortcut")} htmlFor="passwordShortcut">
+              <ShortcutCaptureInput
+                id="passwordShortcut"
+                value={values.passwordShortcut}
+                onChange={(value) => handleShortcutChange("passwordShortcut", value)}
+                onRejected={handleShortcutRejected}
+                placeholder={t("fields.shortcutPlaceholder")}
+                clearLabel={t("fields.clearShortcut")}
+                labels={{
+                  mouseBack: t("fields.mouseBack"),
+                  mouseForward: t("fields.mouseForward"),
+                  mouseMiddle: t("fields.mouseMiddle"),
+                }}
+              />
+            </FieldGroup>
+
+            <p className="text-[11px] leading-5 text-muted-foreground">
+              {t("fields.shortcutHint")}
+            </p>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -448,28 +530,30 @@ function FieldGroup({
 function ShortcutCaptureInput({
   clearLabel,
   id,
+  labels,
   onChange,
+  onRejected,
   placeholder,
   value,
 }: {
   clearLabel: string;
   id: string;
+  labels: {
+    mouseBack: string;
+    mouseForward: string;
+    mouseMiddle: string;
+  };
   onChange: (value: string) => void;
+  onRejected: (messageKey: string) => void;
   placeholder: string;
   value: string;
 }) {
   function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Tab" && !event.ctrlKey && !event.altKey && !event.shiftKey) {
-      return;
-    }
-
     event.preventDefault();
     event.stopPropagation();
 
     if (
-      (event.key === "Backspace" ||
-        event.key === "Delete" ||
-        event.key === "Escape") &&
+      (event.key === "Backspace" || event.key === "Delete") &&
       !event.ctrlKey &&
       !event.altKey &&
       !event.shiftKey
@@ -481,7 +565,21 @@ function ShortcutCaptureInput({
     const shortcut = keyboardEventToShortcut(event);
     if (shortcut) {
       onChange(shortcut);
+      return;
     }
+
+    onRejected("errors.shortcutReserved");
+  }
+
+  function handleMouseDown(event: ReactMouseEvent<HTMLInputElement>) {
+    const shortcut = mouseButtonToShortcut(event.button);
+    if (!shortcut) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onChange(shortcut);
   }
 
   return (
@@ -489,8 +587,9 @@ function ShortcutCaptureInput({
       <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         id={id}
-        value={formatShortcutForDisplay(value)}
+        value={formatShortcutForDisplay(value, labels)}
         onKeyDown={handleKeyDown}
+        onMouseDown={handleMouseDown}
         onPaste={(event) => event.preventDefault()}
         placeholder={placeholder}
         readOnly
@@ -541,8 +640,12 @@ function InlineActionButton({
 }
 
 function keyboardEventToShortcut(event: ReactKeyboardEvent<HTMLInputElement>) {
+  if (event.metaKey) {
+    return "";
+  }
+
   const key = normalizeKeyboardKey(event.key, event.code);
-  if (!key) {
+  if (!key || isReservedShortcutKey(key)) {
     return "";
   }
 
@@ -557,10 +660,6 @@ function keyboardEventToShortcut(event: ReactKeyboardEvent<HTMLInputElement>) {
     modifiers.push("Shift");
   }
 
-  if (modifiers.length === 0 && !isFunctionKey(key)) {
-    return "";
-  }
-
   return [...modifiers, key].join("+");
 }
 
@@ -572,6 +671,10 @@ function normalizeKeyboardKey(key: string, code: string) {
   const functionKey = code.match(/^F([1-9]|1\d|2[0-4])$/)?.[0];
   if (functionKey) {
     return functionKey;
+  }
+
+  if (/^Numpad\d$/.test(code)) {
+    return code.replace("Numpad", "");
   }
 
   if (/^[a-z]$/i.test(key)) {
@@ -596,18 +699,76 @@ function normalizeKeyboardKey(key: string, code: string) {
     Insert: "Insert",
     PageDown: "PageDown",
     PageUp: "PageUp",
+    CapsLock: "Capslock",
+    NumLock: "Numlock",
+    ScrollLock: "Scrolllock",
+    PrintScreen: "PrintScreen",
     " ": "Space",
   };
 
-  return namedKeys[key] ?? "";
+  if (namedKeys[key]) {
+    return namedKeys[key];
+  }
+
+  const codeKeys: Record<string, string> = {
+    Backquote: "Backquote",
+    Backslash: "Backslash",
+    BracketLeft: "BracketLeft",
+    BracketRight: "BracketRight",
+    Comma: "Comma",
+    Equal: "Equal",
+    Minus: "Minus",
+    Period: "Period",
+    Quote: "Quote",
+    Semicolon: "Semicolon",
+    Slash: "Slash",
+  };
+
+  return codeKeys[code] ?? "";
 }
 
-function isFunctionKey(key: string) {
-  return /^F([1-9]|1\d|2[0-4])$/.test(key);
+function isReservedShortcutKey(key: string) {
+  return (
+    key === "Escape" ||
+    key === "Enter" ||
+    key === "Tab" ||
+    key === "Space" ||
+    key === "Backspace" ||
+    key === "Delete"
+  );
 }
 
-function formatShortcutForDisplay(value: string) {
-  return value.replace(/\bControl\b/g, "Ctrl");
+function mouseButtonToShortcut(button: number) {
+  if (button === 1) {
+    return "MouseMiddle";
+  }
+
+  if (button === 3) {
+    return "MouseBack";
+  }
+
+  if (button === 4) {
+    return "MouseForward";
+  }
+
+  return "";
+}
+
+function formatShortcutForDisplay(
+  value: string,
+  labels: {
+    mouseBack: string;
+    mouseForward: string;
+    mouseMiddle: string;
+  },
+) {
+  const mouseLabels: Record<string, string> = {
+    MouseBack: labels.mouseBack,
+    MouseForward: labels.mouseForward,
+    MouseMiddle: labels.mouseMiddle,
+  };
+
+  return mouseLabels[value] ?? value.replace(/\bControl\b/g, "Ctrl");
 }
 
 function LogoPickerButton({

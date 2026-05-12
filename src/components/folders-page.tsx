@@ -59,6 +59,7 @@ interface FoldersPageProps {
   dragEnabled: boolean;
   folderDragEnabled: boolean;
   externalCopyFeedback?: EntryCopyFeedback | null;
+  onShortcutSuspendChange?: (suspended: boolean) => void;
   onReorderFolders: (folderIds: string[]) => Promise<void> | void;
   onReorderFolderEntries: (
     folderId: string,
@@ -88,6 +89,7 @@ export function FoldersPage({
   dragEnabled,
   folderDragEnabled,
   externalCopyFeedback,
+  onShortcutSuspendChange,
   onReorderFolders,
   onReorderFolderEntries,
   onCopyUsername,
@@ -142,6 +144,15 @@ export function FoldersPage({
       setSelectedFolderId(null);
     }
   }, [folders, selectedFolderId]);
+
+  useEffect(() => {
+    const suspended = createDialogOpen || Boolean(editingFolder);
+    onShortcutSuspendChange?.(suspended);
+
+    return () => {
+      onShortcutSuspendChange?.(false);
+    };
+  }, [createDialogOpen, editingFolder, onShortcutSuspendChange]);
 
   async function handleDeleteFolder(folder: VaultFolder) {
     if (!window.confirm(t("folders.deleteConfirm", { name: folder.name }))) {

@@ -45,6 +45,62 @@ const SHORTCUT_KEY_ALIASES = new Map([
   ["down", "Down"],
   ["left", "Left"],
   ["right", "Right"],
+  ["arrowup", "Up"],
+  ["arrowdown", "Down"],
+  ["arrowleft", "Left"],
+  ["arrowright", "Right"],
+  ["capslock", "Capslock"],
+  ["numlock", "Numlock"],
+  ["scrolllock", "Scrolllock"],
+  ["printscreen", "PrintScreen"],
+  ["space", "Space"],
+  ["comma", "Comma"],
+  [",", "Comma"],
+  ["period", "Period"],
+  [".", "Period"],
+  ["slash", "Slash"],
+  ["/", "Slash"],
+  ["backslash", "Backslash"],
+  ["\\", "Backslash"],
+  ["minus", "Minus"],
+  ["-", "Minus"],
+  ["equal", "Equal"],
+  ["=", "Equal"],
+  ["semicolon", "Semicolon"],
+  [";", "Semicolon"],
+  ["quote", "Quote"],
+  ["'", "Quote"],
+  ["backquote", "Backquote"],
+  ["`", "Backquote"],
+  ["bracketleft", "BracketLeft"],
+  ["[", "BracketLeft"],
+  ["bracketright", "BracketRight"],
+  ["]", "BracketRight"],
+]);
+const SHORTCUT_MOUSE_ALIASES = new Map([
+  ["mousemiddle", "MouseMiddle"],
+  ["middlemouse", "MouseMiddle"],
+  ["middleclick", "MouseMiddle"],
+  ["mouse3", "MouseMiddle"],
+  ["button1", "MouseMiddle"],
+  ["mouseback", "MouseBack"],
+  ["backmouse", "MouseBack"],
+  ["backbutton", "MouseBack"],
+  ["mouse4", "MouseBack"],
+  ["button3", "MouseBack"],
+  ["mouseforward", "MouseForward"],
+  ["forwardmouse", "MouseForward"],
+  ["forwardbutton", "MouseForward"],
+  ["mouse5", "MouseForward"],
+  ["button4", "MouseForward"],
+]);
+const RESERVED_SHORTCUT_KEYS = new Set([
+  "Escape",
+  "Enter",
+  "Tab",
+  "Space",
+  "Backspace",
+  "Delete",
 ]);
 
 let session = null;
@@ -235,6 +291,11 @@ function normalizeShortcutInput(value, { strict = false } = {}) {
     return "";
   }
 
+  const mouseShortcut = normalizeMouseShortcut(trimmedValue);
+  if (mouseShortcut) {
+    return mouseShortcut;
+  }
+
   const parts = trimmedValue
     .replace(/[()]/g, "")
     .split("+")
@@ -263,7 +324,7 @@ function normalizeShortcutInput(value, { strict = false } = {}) {
     key = normalizeShortcutKey(part);
   }
 
-  if (!key || (modifiers.size === 0 && !isFunctionShortcutKey(key))) {
+  if (!key || RESERVED_SHORTCUT_KEYS.has(key)) {
     if (strict) {
       throw new Error("errors.shortcutInvalid");
     }
@@ -275,6 +336,15 @@ function normalizeShortcutInput(value, { strict = false } = {}) {
     ...SHORTCUT_MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier)),
     key,
   ].join("+");
+}
+
+function normalizeMouseShortcut(value) {
+  const compactValue = String(value ?? "")
+    .trim()
+    .toLocaleLowerCase("en-US")
+    .replace(/[\s+_-]+/g, "");
+
+  return SHORTCUT_MOUSE_ALIASES.get(compactValue) ?? "";
 }
 
 function normalizeShortcutKey(value) {
@@ -297,8 +367,8 @@ function normalizeShortcutKey(value) {
   return SHORTCUT_KEY_ALIASES.get(compactValue) ?? "";
 }
 
-function isFunctionShortcutKey(value) {
-  return /^F([1-9]|1\d|2[0-4])$/.test(value);
+function isMouseShortcut(value) {
+  return value === "MouseMiddle" || value === "MouseBack" || value === "MouseForward";
 }
 
 function readEntryShortcut(entry, field) {
@@ -1025,6 +1095,7 @@ function getShortcutAssignments() {
         accelerator: entry.usernameShortcut,
         entryId: entry.id,
         field: "username",
+        kind: isMouseShortcut(entry.usernameShortcut) ? "mouse" : "keyboard",
       });
     }
 
@@ -1033,6 +1104,7 @@ function getShortcutAssignments() {
         accelerator: entry.passwordShortcut,
         entryId: entry.id,
         field: "password",
+        kind: isMouseShortcut(entry.passwordShortcut) ? "mouse" : "keyboard",
       });
     }
 

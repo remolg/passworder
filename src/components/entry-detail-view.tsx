@@ -4,7 +4,12 @@ import { ArrowLeft, LockKeyhole, Trash2 } from "lucide-react";
 import { EntryFormFields } from "@/components/entry-form-fields";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { EntryFormValues, VaultEntry, VaultFolder } from "@/types/vault";
+import {
+  EntryFormValues,
+  ShortcutFormField,
+  VaultEntry,
+  VaultFolder,
+} from "@/types/vault";
 
 interface EntryDetailViewProps {
   entry: VaultEntry;
@@ -12,6 +17,8 @@ interface EntryDetailViewProps {
   busy: boolean;
   onBack: () => void;
   onCopyPassword?: (value: string) => Promise<boolean>;
+  isShortcutAvailable?: (shortcut: string, field: ShortcutFormField) => boolean;
+  onShortcutRejected?: (messageKey: string) => void;
   onDelete: (entry: VaultEntry) => Promise<void> | void;
   onSave: (values: EntryFormValues) => Promise<void> | void;
 }
@@ -22,6 +29,8 @@ export function EntryDetailView({
   busy,
   onBack,
   onCopyPassword,
+  isShortcutAvailable,
+  onShortcutRejected,
   onDelete,
   onSave,
 }: EntryDetailViewProps) {
@@ -67,6 +76,8 @@ export function EntryDetailView({
             }))
           }
           onCopyPassword={onCopyPassword}
+          isShortcutAvailable={isShortcutAvailable}
+          onShortcutRejected={onShortcutRejected}
         />
       </div>
 
