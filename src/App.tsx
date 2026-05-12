@@ -26,6 +26,7 @@ import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useVaultController } from "@/hooks/use-vault-controller";
 import {
   appUpdates,
+  entryCopyEvents,
   appWindow,
   supportsEntryReorder,
   supportsFolderReorder,
@@ -43,6 +44,7 @@ import { generatePassword } from "@/lib/password-generator";
 import { cn } from "@/lib/utils";
 import {
   AppLanguage,
+  EntryCopyFeedback,
   EntryFormValues,
   EntryMutationInput,
   FolderMutationInput,
@@ -57,7 +59,9 @@ const DEFAULT_QUICK_ADD_VALUES: EntryFormValues = {
   logoId: "",
   folderId: "",
   username: "",
+  usernameShortcut: "",
   password: "",
+  passwordShortcut: "",
   url: "",
   notes: "",
   tags: "",
@@ -126,6 +130,9 @@ function AppContent({
   const [quickAddBackSection, setQuickAddBackSection] =
     useState<SectionId>("passwords");
   const [navOpen, setNavOpen] = useState(false);
+  const [externalCopyFeedback, setExternalCopyFeedback] =
+    useState<EntryCopyFeedback | null>(null);
+  const [externalCopyNotice, setExternalCopyNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedEntry) {
@@ -159,6 +166,30 @@ function AppContent({
     };
   }, [controller.notice, controller.error, controller]);
 
+  useEffect(() => {
+    let sequence = 0;
+
+    return entryCopyEvents.subscribe((event) => {
+      sequence += 1;
+      setExternalCopyFeedback(entryCopyEvents.toFeedback(event, sequence));
+      setExternalCopyNotice("notice.copiedToClipboard");
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!externalCopyNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setExternalCopyNotice(null);
+    }, 1_800);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [externalCopyNotice, externalCopyFeedback?.sequence]);
+
   const autoLock = useAutoLock({
     enabled: Boolean(controller.payload),
     minutes:
@@ -166,7 +197,7 @@ function AppContent({
       controller.status.defaultAutoLockMinutes,
     onLock: () => controller.lockVault(false),
   });
-  const statusMessageKey = controller.error ?? controller.notice;
+  const statusMessageKey = controller.error ?? externalCopyNotice ?? controller.notice;
   const statusMessage = statusMessageKey
     ? resolveText(statusMessageKey)
     : undefined;
@@ -585,6 +616,7 @@ function AppContent({
                     onClearFilters={handleClearFilters}
                     onOpenDetails={handleOpenPasswordEntry}
                     dragEnabled={supportsEntryReorder()}
+                    externalCopyFeedback={externalCopyFeedback}
                     filterActive={Boolean(searchTerm.trim()) || Boolean(selectedTag)}
                     onReorder={handleReorder}
                     onCopyUsername={(entry) => handleCopy(entry.username)}
@@ -605,6 +637,7 @@ function AppContent({
                   busy={controller.busy}
                   dragEnabled={supportsEntryReorder()}
                   folderDragEnabled={supportsFolderReorder()}
+                  externalCopyFeedback={externalCopyFeedback}
                   onCreateFolder={handleCreateFolder}
                   onUpdateFolder={handleUpdateFolder}
                   onDeleteFolder={handleDeleteFolder}
@@ -675,7 +708,9 @@ function toMutationInput(values: EntryFormValues): EntryMutationInput {
     logoId: values.logoId.trim() || undefined,
     folderId: values.folderId.trim() || undefined,
     username: values.username.trim(),
+    usernameShortcut: values.usernameShortcut,
     password: values.password,
+    passwordShortcut: values.passwordShortcut,
     url: values.url.trim(),
     notes: values.notes.trim(),
     tags: values.tags

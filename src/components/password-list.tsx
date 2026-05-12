@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { VaultEntry } from "@/types/vault";
+import { EntryCopyFeedback, VaultEntry } from "@/types/vault";
 
 interface PasswordListProps {
   entries: VaultEntry[];
@@ -30,6 +30,7 @@ interface PasswordListProps {
   onClearFilters: () => void;
   onOpenDetails: (entry: VaultEntry) => void;
   dragEnabled: boolean;
+  externalCopyFeedback?: EntryCopyFeedback | null;
   filterActive: boolean;
   onReorder: (entryIds: string[]) => Promise<void> | void;
   onCopyUsername: (entry: VaultEntry) => Promise<boolean>;
@@ -57,6 +58,7 @@ export function PasswordList({
   onClearFilters,
   onOpenDetails,
   dragEnabled,
+  externalCopyFeedback,
   filterActive,
   onReorder,
   onCopyUsername,
@@ -104,6 +106,16 @@ export function PasswordList({
       setTagFiltersOpen(true);
     }
   }, [selectedTag]);
+
+  useEffect(() => {
+    if (!externalCopyFeedback) {
+      return;
+    }
+
+    copyFeedback.markCopied(
+      `${externalCopyFeedback.field}:${externalCopyFeedback.entryId}`,
+    );
+  }, [externalCopyFeedback]);
 
   useEffect(() => {
     if (typeof document === "undefined" || !draggedEntryId) {

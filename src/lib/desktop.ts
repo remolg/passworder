@@ -3,12 +3,13 @@ import {
   EntryMutationInput,
   FolderMutationInput,
   ExportEntriesResult,
+  EntryCopyFeedback,
   ImportEntriesResult,
   MasterPasswordChangeInput,
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
-import { AppUpdateInfo, DesktopVaultApi } from "@/types/desktop";
+import { AppUpdateInfo, DesktopVaultApi, EntrySecretCopiedEvent } from "@/types/desktop";
 
 export function isDesktopRuntime() {
   return typeof window !== "undefined" && typeof window.passworder !== "undefined";
@@ -134,5 +135,28 @@ export const appUpdates = {
     }
 
     return getUpdateInfo() as Promise<AppUpdateInfo>;
+  },
+};
+
+export const entryCopyEvents = {
+  subscribe(callback: (event: EntrySecretCopiedEvent) => void) {
+    const subscribe = window.passworder?.onEntrySecretCopied;
+    if (!subscribe) {
+      return () => {};
+    }
+
+    const subscriptionId = subscribe(callback);
+    return () => {
+      if (typeof subscriptionId === "number") {
+        window.passworder?.offEntrySecretCopied?.(subscriptionId);
+      }
+    };
+  },
+  toFeedback(event: EntrySecretCopiedEvent, sequence: number): EntryCopyFeedback {
+    return {
+      entryId: event.entryId,
+      field: event.field,
+      sequence,
+    };
   },
 };

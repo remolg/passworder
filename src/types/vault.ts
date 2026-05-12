@@ -1,4 +1,11 @@
 export type AppLanguage = "en" | "tr";
+export type CopyableEntryField = "username" | "password";
+
+export interface EntryCopyFeedback {
+  entryId: string;
+  field: CopyableEntryField;
+  sequence: number;
+}
 
 export interface VaultSettings {
   autoLockMinutes: number;
@@ -12,7 +19,9 @@ export interface VaultEntry {
   logoId?: string;
   folderId?: string;
   username: string;
+  usernameShortcut: string;
   password: string;
+  passwordShortcut: string;
   url: string;
   notes: string;
   tags: string[];
@@ -58,7 +67,9 @@ export interface EntryFormValues {
   logoId: string;
   folderId: string;
   username: string;
+  usernameShortcut: string;
   password: string;
+  passwordShortcut: string;
   url: string;
   notes: string;
   tags: string;
@@ -70,7 +81,9 @@ export interface EntryMutationInput {
   logoId?: string;
   folderId?: string;
   username: string;
+  usernameShortcut: string;
   password: string;
+  passwordShortcut: string;
   url: string;
   notes: string;
   tags: string[];

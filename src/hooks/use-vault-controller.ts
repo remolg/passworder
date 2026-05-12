@@ -315,7 +315,7 @@ export function useVaultController() {
     const clearAfterSeconds = payload?.settings.clipboardClearSeconds ?? 30;
     const result = await runMutation(
       () => vaultApi.copyToClipboard(value, clearAfterSeconds),
-      undefined,
+      "notice.copiedToClipboard",
       false,
     );
 

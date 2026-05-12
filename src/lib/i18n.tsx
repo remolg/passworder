@@ -111,8 +111,13 @@ const EN_TRANSLATIONS = {
   "fields.urlPlaceholder": "https://github.com/login",
   "fields.username": "Username or Email",
   "fields.usernamePlaceholder": "user@example.com",
+  "fields.usernameShortcut": "Username shortcut",
   "fields.password": "Password",
   "fields.passwordPlaceholder": "Enter or generate a strong password",
+  "fields.passwordShortcut": "Password shortcut",
+  "fields.shortcutPlaceholder": "Press F1 or Ctrl+Alt+U",
+  "fields.shortcutHint": "Works while the vault is unlocked.",
+  "fields.clearShortcut": "Clear shortcut",
   "fields.notes": "Notes",
   "fields.notesPlaceholder": "Recovery codes, backup email, 2FA notes...",
   "fields.tags": "Tags",
@@ -200,6 +205,10 @@ const EN_TRANSLATIONS = {
     "Master password must be at least 3 characters.",
   "errors.entryServiceRequired": "Service / site is required.",
   "errors.entryPasswordRequired": "Password is required.",
+  "errors.shortcutInvalid":
+    "Use F1-F24 alone, or combine a key with Ctrl, Alt, or Shift.",
+  "errors.shortcutDuplicate":
+    "This shortcut is already assigned to another entry action.",
   "errors.vaultAlreadyExists": "Vault already exists.",
   "errors.masterPasswordInvalid": "Master password could not be verified.",
   "errors.entryNotFoundUpdate": "Entry to update was not found.",
@@ -226,7 +235,7 @@ const EN_TRANSLATIONS = {
   "notice.exportCompleted": "Passwords exported.",
   "notice.importCompleted": "Passwords imported.",
   "notice.settingsSaved": "Vault settings saved.",
-  "notice.copiedToClipboard": "Copied to clipboard.",
+  "notice.copiedToClipboard": "Copied",
 } as const;
 
 export type TranslationKey = keyof typeof EN_TRANSLATIONS;
@@ -340,8 +349,13 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "fields.urlPlaceholder": "https://github.com/login",
   "fields.username": "Kullanıcı Adı veya E-posta",
   "fields.usernamePlaceholder": "kullanici@ornek.com",
+  "fields.usernameShortcut": "Kullanıcı adı kısayolu",
   "fields.password": "Şifre",
   "fields.passwordPlaceholder": "Güçlü bir parola girin veya üretin",
+  "fields.passwordShortcut": "Şifre kısayolu",
+  "fields.shortcutPlaceholder": "F1 veya Ctrl+Alt+U tuşlayın",
+  "fields.shortcutHint": "Kasa açıkken çalışır.",
+  "fields.clearShortcut": "Kısayolu temizle",
   "fields.notes": "Notlar",
   "fields.notesPlaceholder": "Kurtarma kodları, yedek e-posta, 2FA notları...",
   "fields.tags": "Etiketler",
@@ -429,6 +443,10 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Master password en az 3 karakter olmalı.",
   "errors.entryServiceRequired": "Servis / site alanı zorunlu.",
   "errors.entryPasswordRequired": "Şifre alanı zorunlu.",
+  "errors.shortcutInvalid":
+    "F1-F24 tek başına kullanılabilir; diğer tuşları Ctrl, Alt veya Shift ile kullanın.",
+  "errors.shortcutDuplicate":
+    "Bu kısayol başka bir kayıt işlemine atanmış.",
   "errors.vaultAlreadyExists": "Kasa zaten mevcut.",
   "errors.masterPasswordInvalid": "Master password doğrulanamadı.",
   "errors.entryNotFoundUpdate": "Güncellenecek kayıt bulunamadı.",
@@ -455,7 +473,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "notice.exportCompleted": "Şifreler dışa aktarıldı.",
   "notice.importCompleted": "Şifreler içe aktarıldı.",
   "notice.settingsSaved": "Kasa ayarları kaydedildi.",
-  "notice.copiedToClipboard": "Panoya kopyalandı.",
+  "notice.copiedToClipboard": "Kopyalandı",
 };
 
 const TRANSLATIONS: Record<AppLanguage, Record<TranslationKey, string>> = {

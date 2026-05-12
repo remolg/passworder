@@ -16,6 +16,36 @@ const NONCE_LENGTH = 12;
 const EXPORT_TYPE = "passworder.entries.export";
 const EXPORT_VERSION = 1;
 const MIN_MASTER_PASSWORD_LENGTH = 3;
+const SHORTCUT_MODIFIER_ORDER = ["Control", "Alt", "Shift"];
+const SHORTCUT_MODIFIER_ALIASES = new Map([
+  ["ctrl", "Control"],
+  ["control", "Control"],
+  ["alt", "Alt"],
+  ["option", "Alt"],
+  ["shift", "Shift"],
+]);
+const SHORTCUT_KEY_ALIASES = new Map([
+  ["esc", "Escape"],
+  ["escape", "Escape"],
+  ["return", "Enter"],
+  ["enter", "Enter"],
+  ["space", "Space"],
+  ["spacebar", "Space"],
+  ["tab", "Tab"],
+  ["backspace", "Backspace"],
+  ["delete", "Delete"],
+  ["del", "Delete"],
+  ["insert", "Insert"],
+  ["ins", "Insert"],
+  ["home", "Home"],
+  ["end", "End"],
+  ["pageup", "PageUp"],
+  ["pagedown", "PageDown"],
+  ["up", "Up"],
+  ["down", "Down"],
+  ["left", "Left"],
+  ["right", "Right"],
+]);
 
 let session = null;
 
@@ -195,6 +225,107 @@ function normalizeExistingFolderId(folderId, folderIds) {
   return trimmedFolderId && folderIds.has(trimmedFolderId) ? trimmedFolderId : undefined;
 }
 
+function normalizeShortcutInput(value, { strict = false } = {}) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return "";
+  }
+
+  const parts = trimmedValue
+    .replace(/[()]/g, "")
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const modifiers = new Set();
+  let key = "";
+
+  for (const part of parts) {
+    const normalizedPart = part.toLocaleLowerCase("en-US").replace(/\s+/g, "");
+    const modifier = SHORTCUT_MODIFIER_ALIASES.get(normalizedPart);
+
+    if (modifier) {
+      modifiers.add(modifier);
+      continue;
+    }
+
+    if (key) {
+      if (strict) {
+        throw new Error("errors.shortcutInvalid");
+      }
+
+      return "";
+    }
+
+    key = normalizeShortcutKey(part);
+  }
+
+  if (!key || (modifiers.size === 0 && !isFunctionShortcutKey(key))) {
+    if (strict) {
+      throw new Error("errors.shortcutInvalid");
+    }
+
+    return "";
+  }
+
+  return [
+    ...SHORTCUT_MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier)),
+    key,
+  ].join("+");
+}
+
+function normalizeShortcutKey(value) {
+  const trimmedValue = String(value ?? "").trim();
+  const compactValue = trimmedValue.toLocaleLowerCase("en-US").replace(/\s+/g, "");
+  const functionKeyMatch = compactValue.match(/^f([1-9]|1\d|2[0-4])$/);
+
+  if (functionKeyMatch) {
+    return `F${functionKeyMatch[1]}`;
+  }
+
+  if (/^[a-z]$/i.test(trimmedValue)) {
+    return trimmedValue.toUpperCase();
+  }
+
+  if (/^\d$/.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
+  return SHORTCUT_KEY_ALIASES.get(compactValue) ?? "";
+}
+
+function isFunctionShortcutKey(value) {
+  return /^F([1-9]|1\d|2[0-4])$/.test(value);
+}
+
+function readEntryShortcut(entry, field) {
+  const directValue = entry?.[`${field}Shortcut`];
+  const legacyValue = entry?.shortcuts?.[field];
+
+  return normalizeShortcutInput(directValue ?? legacyValue);
+}
+
+function validateShortcutAssignments(entries) {
+  const shortcuts = new Set();
+
+  for (const entry of entries) {
+    for (const shortcut of [entry.usernameShortcut, entry.passwordShortcut]) {
+      if (!shortcut) {
+        continue;
+      }
+
+      if (shortcuts.has(shortcut)) {
+        throw new Error("errors.shortcutDuplicate");
+      }
+
+      shortcuts.add(shortcut);
+    }
+  }
+}
+
 function normalizeFolders(folders) {
   if (!Array.isArray(folders)) {
     return [];
@@ -245,7 +376,9 @@ function normalizeStoredEntry(entry, folderIds) {
     logoId: normalizeLogoId(entry?.logoId),
     folderId,
     username: typeof entry?.username === "string" ? entry.username : "",
+    usernameShortcut: readEntryShortcut(entry, "username"),
     password: typeof entry?.password === "string" ? entry.password : "",
+    passwordShortcut: readEntryShortcut(entry, "password"),
     url: typeof entry?.url === "string" ? entry.url : "",
     notes: typeof entry?.notes === "string" ? entry.notes : "",
     tags: Array.isArray(entry?.tags) ? normalizeTags(entry.tags) : [],
@@ -261,7 +394,9 @@ function cloneEntry(entry) {
     logoId: normalizeLogoId(entry.logoId),
     folderId: entry.folderId,
     username: entry.username,
+    usernameShortcut: entry.usernameShortcut,
     password: entry.password,
+    passwordShortcut: entry.passwordShortcut,
     url: entry.url,
     notes: entry.notes,
     tags: [...entry.tags],
@@ -398,7 +533,9 @@ function normalizeImportedEntry(entry, folderIds) {
     logoId: normalizeLogoId(entry.logoId),
     folderId: normalizeExistingFolderId(entry.folderId, folderIds),
     username: typeof entry.username === "string" ? entry.username.trim() : "",
+    usernameShortcut: readEntryShortcut(entry, "username"),
     password,
+    passwordShortcut: readEntryShortcut(entry, "password"),
     url: typeof entry.url === "string" ? entry.url.trim() : "",
     notes: typeof entry.notes === "string" ? entry.notes.trim() : "",
     tags: Array.isArray(entry.tags) ? normalizeTags(entry.tags) : [],
@@ -462,7 +599,15 @@ function buildEntry(input, existingEntry, folderIds) {
     logoId: normalizeLogoId(input.logoId),
     folderId,
     username: input.username.trim(),
+    usernameShortcut: normalizeShortcutInput(
+      input.usernameShortcut ?? existingEntry?.usernameShortcut ?? "",
+      { strict: true },
+    ),
     password: input.password,
+    passwordShortcut: normalizeShortcutInput(
+      input.passwordShortcut ?? existingEntry?.passwordShortcut ?? "",
+      { strict: true },
+    ),
     url: input.url.trim(),
     notes: input.notes.trim(),
     tags: normalizeTags(input.tags),
@@ -563,21 +708,25 @@ async function saveEntry(storagePath, input) {
 
   const currentSession = ensureUnlockedSession();
   const folderIds = new Set(currentSession.payload.folders.map((folder) => folder.id));
+  const nextEntries = currentSession.payload.entries.slice();
 
   if (input.id) {
-    const index = currentSession.payload.entries.findIndex((entry) => entry.id === input.id);
+    const index = nextEntries.findIndex((entry) => entry.id === input.id);
     if (index === -1) {
       throw new Error("errors.entryNotFoundUpdate");
     }
 
-    currentSession.payload.entries[index] = buildEntry(
+    nextEntries[index] = buildEntry(
       input,
-      currentSession.payload.entries[index],
+      nextEntries[index],
       folderIds,
     );
   } else {
-    currentSession.payload.entries.unshift(buildEntry(input, undefined, folderIds));
+    nextEntries.unshift(buildEntry(input, undefined, folderIds));
   }
+
+  validateShortcutAssignments(nextEntries);
+  currentSession.payload.entries = nextEntries;
 
   await persistSession(storagePath);
   return currentSession.payload;
@@ -726,6 +875,7 @@ async function importEntries(storagePath, importPath) {
     currentEntries[existingIndex] = importedEntry;
   }
 
+  validateShortcutAssignments(currentEntries);
   currentSession.payload.folders = currentFolders;
   currentSession.payload.entries = currentEntries;
 
@@ -842,6 +992,54 @@ async function copyToClipboard(value, clearAfterSeconds) {
   timer.unref?.();
 }
 
+async function copyEntrySecret(entryId, field) {
+  const currentSession = ensureUnlockedSession();
+  const entry = currentSession.payload.entries.find((candidate) => candidate.id === entryId);
+
+  if (!entry || (field !== "username" && field !== "password")) {
+    throw new Error("errors.unexpected");
+  }
+
+  const value = entry[field];
+  if (!value) {
+    return null;
+  }
+
+  await copyToClipboard(value, currentSession.payload.settings.clipboardClearSeconds);
+  return {
+    entryId: entry.id,
+    field,
+  };
+}
+
+function getShortcutAssignments() {
+  if (!session) {
+    return [];
+  }
+
+  return session.payload.entries.flatMap((entry) => {
+    const assignments = [];
+
+    if (entry.usernameShortcut) {
+      assignments.push({
+        accelerator: entry.usernameShortcut,
+        entryId: entry.id,
+        field: "username",
+      });
+    }
+
+    if (entry.passwordShortcut) {
+      assignments.push({
+        accelerator: entry.passwordShortcut,
+        entryId: entry.id,
+        field: "password",
+      });
+    }
+
+    return assignments;
+  });
+}
+
 module.exports = {
   getStatus,
   initializeVault,
@@ -859,4 +1057,6 @@ module.exports = {
   updateSettings,
   changeMasterPassword,
   copyToClipboard,
+  copyEntrySecret,
+  getShortcutAssignments,
 };

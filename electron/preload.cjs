@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+let entrySecretCopiedSubscriptionId = 0;
+const entrySecretCopiedSubscriptions = new Map();
+
 contextBridge.exposeInMainWorld("passworder", {
   getStatus: () => ipcRenderer.invoke("vault:get-status"),
   initializeVault: (masterPassword) =>
@@ -19,6 +22,29 @@ contextBridge.exposeInMainWorld("passworder", {
   changeMasterPassword: (input) => ipcRenderer.invoke("vault:change-master-password", input),
   copyToClipboard: (value, clearAfterSeconds) =>
     ipcRenderer.invoke("vault:copy-to-clipboard", value, clearAfterSeconds),
+  onEntrySecretCopied: (callback) => {
+    if (typeof callback !== "function") {
+      return null;
+    }
+
+    const subscriptionId = ++entrySecretCopiedSubscriptionId;
+    const listener = (_event, payload) => {
+      callback(payload);
+    };
+
+    entrySecretCopiedSubscriptions.set(subscriptionId, listener);
+    ipcRenderer.on("vault:entry-secret-copied", listener);
+    return subscriptionId;
+  },
+  offEntrySecretCopied: (subscriptionId) => {
+    const listener = entrySecretCopiedSubscriptions.get(subscriptionId);
+    if (!listener) {
+      return;
+    }
+
+    ipcRenderer.removeListener("vault:entry-secret-copied", listener);
+    entrySecretCopiedSubscriptions.delete(subscriptionId);
+  },
   getUpdateInfo: () => ipcRenderer.invoke("app:get-update-info"),
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),

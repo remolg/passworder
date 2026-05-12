@@ -36,7 +36,12 @@ import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { useI18n } from "@/lib/i18n";
 import { getLogoOption, LOGO_OPTIONS } from "@/lib/logo-catalog";
 import { cn } from "@/lib/utils";
-import { FolderMutationInput, VaultEntry, VaultFolder } from "@/types/vault";
+import {
+  EntryCopyFeedback,
+  FolderMutationInput,
+  VaultEntry,
+  VaultFolder,
+} from "@/types/vault";
 
 interface FoldersPageProps {
   folders: VaultFolder[];
@@ -53,6 +58,7 @@ interface FoldersPageProps {
   onCreateEntryInFolder: (folderId: string) => void;
   dragEnabled: boolean;
   folderDragEnabled: boolean;
+  externalCopyFeedback?: EntryCopyFeedback | null;
   onReorderFolders: (folderIds: string[]) => Promise<void> | void;
   onReorderFolderEntries: (
     folderId: string,
@@ -81,6 +87,7 @@ export function FoldersPage({
   onCreateEntryInFolder,
   dragEnabled,
   folderDragEnabled,
+  externalCopyFeedback,
   onReorderFolders,
   onReorderFolderEntries,
   onCopyUsername,
@@ -273,6 +280,7 @@ export function FoldersPage({
               <FolderEntriesList
                 dragEnabled={dragEnabled}
                 entries={folderEntries}
+                externalCopyFeedback={externalCopyFeedback}
                 onCopyPassword={onCopyPassword}
                 onCopyUsername={onCopyUsername}
                 onOpenEntry={onOpenEntry}
@@ -803,6 +811,7 @@ function FolderCard({
 interface FolderEntriesListProps {
   entries: VaultEntry[];
   dragEnabled: boolean;
+  externalCopyFeedback?: EntryCopyFeedback | null;
   onReorder: (entryIds: string[]) => Promise<void> | void;
   onOpenEntry: (entry: VaultEntry) => void;
   onCopyUsername: (entry: VaultEntry) => Promise<boolean>;
@@ -812,6 +821,7 @@ interface FolderEntriesListProps {
 function FolderEntriesList({
   entries,
   dragEnabled,
+  externalCopyFeedback,
   onReorder,
   onOpenEntry,
   onCopyUsername,
@@ -846,6 +856,16 @@ function FolderEntriesList({
   displayEntriesRef.current = displayEntries;
   entriesRef.current = entries;
   onReorderRef.current = onReorder;
+
+  useEffect(() => {
+    if (!externalCopyFeedback) {
+      return;
+    }
+
+    copyFeedback.markCopied(
+      `${externalCopyFeedback.field}:${externalCopyFeedback.entryId}`,
+    );
+  }, [externalCopyFeedback]);
 
   useEffect(() => {
     if (typeof document === "undefined" || !draggedEntryId) {

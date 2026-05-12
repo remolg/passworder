@@ -4,6 +4,7 @@ const {
   app,
   BrowserWindow,
   dialog,
+  globalShortcut,
   ipcMain,
   Menu,
   nativeImage,
@@ -327,20 +328,63 @@ function enableAutoLaunch() {
   });
 }
 
+const registeredEntryShortcuts = new Set();
+
+function unregisterEntryShortcuts() {
+  for (const accelerator of registeredEntryShortcuts) {
+    globalShortcut.unregister(accelerator);
+  }
+
+  registeredEntryShortcuts.clear();
+}
+
+function refreshEntryShortcuts() {
+  unregisterEntryShortcuts();
+
+  for (const assignment of vaultService.getShortcutAssignments()) {
+    const registered = globalShortcut.register(assignment.accelerator, () => {
+      void vaultService
+        .copyEntrySecret(assignment.entryId, assignment.field)
+        .then((copyEvent) => {
+          if (copyEvent) {
+            mainWindow?.webContents.send("vault:entry-secret-copied", copyEvent);
+          }
+        })
+        .catch(() => {});
+    });
+
+    if (registered) {
+      registeredEntryShortcuts.add(assignment.accelerator);
+    }
+  }
+}
+
 function registerIpcHandlers() {
   ipcMain.handle("vault:get-status", async () =>
     vaultService.getStatus(getVaultStoragePath()),
   );
-  ipcMain.handle("vault:initialize", async (_event, masterPassword) =>
-    vaultService.initializeVault(getVaultStoragePath(), masterPassword),
-  );
-  ipcMain.handle("vault:unlock", async (_event, masterPassword) =>
-    vaultService.unlockVault(getVaultStoragePath(), masterPassword),
-  );
-  ipcMain.handle("vault:lock", async () => vaultService.lockVault());
-  ipcMain.handle("vault:save-entry", async (_event, input) =>
-    vaultService.saveEntry(getVaultStoragePath(), input),
-  );
+  ipcMain.handle("vault:initialize", async (_event, masterPassword) => {
+    const payload = await vaultService.initializeVault(
+      getVaultStoragePath(),
+      masterPassword,
+    );
+    refreshEntryShortcuts();
+    return payload;
+  });
+  ipcMain.handle("vault:unlock", async (_event, masterPassword) => {
+    const payload = await vaultService.unlockVault(getVaultStoragePath(), masterPassword);
+    refreshEntryShortcuts();
+    return payload;
+  });
+  ipcMain.handle("vault:lock", async () => {
+    await vaultService.lockVault();
+    unregisterEntryShortcuts();
+  });
+  ipcMain.handle("vault:save-entry", async (_event, input) => {
+    const payload = await vaultService.saveEntry(getVaultStoragePath(), input);
+    refreshEntryShortcuts();
+    return payload;
+  });
   ipcMain.handle("vault:create-folder", async (_event, input) =>
     vaultService.createFolder(getVaultStoragePath(), input),
   );
@@ -379,6 +423,8 @@ function registerIpcHandlers() {
       result.filePaths[0],
     );
 
+    refreshEntryShortcuts();
+
     return {
       completed: true,
       payload,
@@ -390,15 +436,22 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:reorder-folders", async (_event, folderIds) =>
     vaultService.reorderFolders(getVaultStoragePath(), folderIds),
   );
-  ipcMain.handle("vault:delete-entry", async (_event, id) =>
-    vaultService.deleteEntry(getVaultStoragePath(), id),
-  );
+  ipcMain.handle("vault:delete-entry", async (_event, id) => {
+    const payload = await vaultService.deleteEntry(getVaultStoragePath(), id);
+    refreshEntryShortcuts();
+    return payload;
+  });
   ipcMain.handle("vault:update-settings", async (_event, settings) =>
     vaultService.updateSettings(getVaultStoragePath(), settings),
   );
-  ipcMain.handle("vault:change-master-password", async (_event, input) =>
-    vaultService.changeMasterPassword(getVaultStoragePath(), input),
-  );
+  ipcMain.handle("vault:change-master-password", async (_event, input) => {
+    const payload = await vaultService.changeMasterPassword(
+      getVaultStoragePath(),
+      input,
+    );
+    refreshEntryShortcuts();
+    return payload;
+  });
   ipcMain.handle("vault:copy-to-clipboard", async (_event, value, clearAfterSeconds) =>
     vaultService.copyToClipboard(value, clearAfterSeconds),
   );
@@ -450,4 +503,5 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   isQuitting = true;
+  unregisterEntryShortcuts();
 });

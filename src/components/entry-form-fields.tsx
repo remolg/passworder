@@ -1,4 +1,10 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Check,
   ChevronDown,
@@ -6,7 +12,9 @@ import {
   Eye,
   EyeOff,
   Folder,
+  Keyboard,
   WandSparkles,
+  X,
 } from "lucide-react";
 
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
@@ -285,6 +293,19 @@ export function EntryFormFields({
         />
       </FieldGroup>
 
+      <FieldGroup label={t("fields.usernameShortcut")} htmlFor="usernameShortcut">
+        <ShortcutCaptureInput
+          id="usernameShortcut"
+          value={values.usernameShortcut}
+          onChange={(value) => onChange("usernameShortcut", value)}
+          placeholder={t("fields.shortcutPlaceholder")}
+          clearLabel={t("fields.clearShortcut")}
+        />
+        <p className="text-[11px] leading-5 text-muted-foreground">
+          {t("fields.shortcutHint")}
+        </p>
+      </FieldGroup>
+
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <Label
@@ -363,6 +384,19 @@ export function EntryFormFields({
         </div>
       </div>
 
+      <FieldGroup label={t("fields.passwordShortcut")} htmlFor="passwordShortcut">
+        <ShortcutCaptureInput
+          id="passwordShortcut"
+          value={values.passwordShortcut}
+          onChange={(value) => onChange("passwordShortcut", value)}
+          placeholder={t("fields.shortcutPlaceholder")}
+          clearLabel={t("fields.clearShortcut")}
+        />
+        <p className="text-[11px] leading-5 text-muted-foreground">
+          {t("fields.shortcutHint")}
+        </p>
+      </FieldGroup>
+
       <FieldGroup label={t("fields.notes")} htmlFor="notes">
         <Textarea
           id="notes"
@@ -411,6 +445,72 @@ function FieldGroup({
   );
 }
 
+function ShortcutCaptureInput({
+  clearLabel,
+  id,
+  onChange,
+  placeholder,
+  value,
+}: {
+  clearLabel: string;
+  id: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Tab" && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (
+      (event.key === "Backspace" ||
+        event.key === "Delete" ||
+        event.key === "Escape") &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.shiftKey
+    ) {
+      onChange("");
+      return;
+    }
+
+    const shortcut = keyboardEventToShortcut(event);
+    if (shortcut) {
+      onChange(shortcut);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        id={id}
+        value={formatShortcutForDisplay(value)}
+        onKeyDown={handleKeyDown}
+        onPaste={(event) => event.preventDefault()}
+        placeholder={placeholder}
+        readOnly
+        className={cn("pl-9", value ? "pr-10" : "pr-3")}
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+          aria-label={clearLabel}
+          title={clearLabel}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function InlineActionButton({
   active,
   children,
@@ -438,6 +538,76 @@ function InlineActionButton({
       {children}
     </button>
   );
+}
+
+function keyboardEventToShortcut(event: ReactKeyboardEvent<HTMLInputElement>) {
+  const key = normalizeKeyboardKey(event.key, event.code);
+  if (!key) {
+    return "";
+  }
+
+  const modifiers = [];
+  if (event.ctrlKey) {
+    modifiers.push("Control");
+  }
+  if (event.altKey) {
+    modifiers.push("Alt");
+  }
+  if (event.shiftKey) {
+    modifiers.push("Shift");
+  }
+
+  if (modifiers.length === 0 && !isFunctionKey(key)) {
+    return "";
+  }
+
+  return [...modifiers, key].join("+");
+}
+
+function normalizeKeyboardKey(key: string, code: string) {
+  if (key === "Control" || key === "Alt" || key === "Shift" || key === "Meta") {
+    return "";
+  }
+
+  const functionKey = code.match(/^F([1-9]|1\d|2[0-4])$/)?.[0];
+  if (functionKey) {
+    return functionKey;
+  }
+
+  if (/^[a-z]$/i.test(key)) {
+    return key.toUpperCase();
+  }
+
+  if (/^\d$/.test(key)) {
+    return key;
+  }
+
+  const namedKeys: Record<string, string> = {
+    ArrowDown: "Down",
+    ArrowLeft: "Left",
+    ArrowRight: "Right",
+    ArrowUp: "Up",
+    Backspace: "Backspace",
+    Delete: "Delete",
+    End: "End",
+    Enter: "Enter",
+    Escape: "Escape",
+    Home: "Home",
+    Insert: "Insert",
+    PageDown: "PageDown",
+    PageUp: "PageUp",
+    " ": "Space",
+  };
+
+  return namedKeys[key] ?? "";
+}
+
+function isFunctionKey(key: string) {
+  return /^F([1-9]|1\d|2[0-4])$/.test(key);
+}
+
+function formatShortcutForDisplay(value: string) {
+  return value.replace(/\bControl\b/g, "Ctrl");
 }
 
 function LogoPickerButton({

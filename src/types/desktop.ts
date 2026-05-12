@@ -5,6 +5,7 @@ import {
   ExportEntriesResult,
   ImportEntriesResult,
   MasterPasswordChangeInput,
+  CopyableEntryField,
   VaultPayload,
   VaultSettings,
 } from "@/types/vault";
@@ -16,6 +17,11 @@ export interface AppUpdateInfo {
   releaseUrl: string;
   downloadUrl?: string;
   downloadName?: string;
+}
+
+export interface EntrySecretCopiedEvent {
+  entryId: string;
+  field: CopyableEntryField;
 }
 
 export interface DesktopVaultApi {
@@ -35,6 +41,10 @@ export interface DesktopVaultApi {
   updateSettings: (settings: VaultSettings) => Promise<VaultPayload>;
   changeMasterPassword: (input: MasterPasswordChangeInput) => Promise<VaultPayload>;
   copyToClipboard: (value: string, clearAfterSeconds: number) => Promise<void>;
+  onEntrySecretCopied?: (
+    callback: (event: EntrySecretCopiedEvent) => void,
+  ) => number | null;
+  offEntrySecretCopied?: (subscriptionId: number) => void;
   getUpdateInfo?: () => Promise<AppUpdateInfo>;
   minimizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
