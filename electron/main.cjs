@@ -352,6 +352,10 @@ function refreshEntryShortcuts() {
     }
 
     const registered = globalShortcut.register(assignment.accelerator, () => {
+      if (entryShortcutsSuspended) {
+        return;
+      }
+
       void vaultService
         .copyEntrySecret(assignment.entryId, assignment.field)
         .then((copyEvent) => {
@@ -477,6 +481,10 @@ function registerIpcHandlers() {
   );
   ipcMain.handle("shortcuts:set-suspended", async (_event, suspended) => {
     setEntryShortcutsSuspended(suspended);
+  });
+  ipcMain.on("shortcuts:set-suspended-sync", (event, suspended) => {
+    setEntryShortcutsSuspended(suspended);
+    event.returnValue = true;
   });
   ipcMain.handle("app:get-update-info", async () => getUpdateInfo());
   ipcMain.handle("window:minimize", async () => {

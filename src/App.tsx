@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   type LucideIcon,
   Download,
@@ -141,6 +141,7 @@ function AppContent({
     tone: "notice" | "error";
     sequence: number;
   } | null>(null);
+  const shortcutsSuspendedRef = useRef(false);
 
   useEffect(() => {
     if (!selectedEntry) {
@@ -178,6 +179,10 @@ function AppContent({
     let sequence = 0;
 
     return entryCopyEvents.subscribe((event) => {
+      if (shortcutsSuspendedRef.current) {
+        return;
+      }
+
       sequence += 1;
       setExternalCopyFeedback(entryCopyEvents.toFeedback(event, sequence));
       setExternalCopyNotice("notice.copiedToClipboard");
@@ -226,11 +231,13 @@ function AppContent({
       nestedShortcutsSuspended);
 
   useEffect(() => {
+    shortcutsSuspendedRef.current = shortcutsSuspended;
     void shortcutRuntime.setSuspended(shortcutsSuspended);
 
-    return () => {
-      void shortcutRuntime.setSuspended(false);
-    };
+    if (shortcutsSuspended) {
+      setExternalCopyFeedback(null);
+      setExternalCopyNotice(null);
+    }
   }, [shortcutsSuspended]);
 
   useEffect(() => {
@@ -490,12 +497,20 @@ function AppContent({
   }
 
   function handleOpenFolderEntry(entry: VaultEntry) {
+    void shortcutRuntime.setSuspended(true);
+    shortcutsSuspendedRef.current = true;
+    setExternalCopyFeedback(null);
+    setExternalCopyNotice(null);
     setEntryDetailBackSection("folders");
     setSelectedEntry(entry);
     setActiveSection("passwords");
   }
 
   function handleOpenPasswordEntry(entry: VaultEntry) {
+    void shortcutRuntime.setSuspended(true);
+    shortcutsSuspendedRef.current = true;
+    setExternalCopyFeedback(null);
+    setExternalCopyNotice(null);
     setEntryDetailBackSection("passwords");
     setSelectedEntry(entry);
   }
@@ -1116,15 +1131,15 @@ function StatusBar({
         </span>
       </div>
 
-      <div className="flex min-w-0 items-center justify-end">
-        <div className="relative flex h-7 max-w-[220px] items-center justify-end overflow-hidden">
+      <div className="flex min-w-0 flex-1 items-center justify-end pl-3">
+        <div className="relative flex h-7 w-full min-w-[170px] items-center justify-end overflow-hidden">
           <button
             type="button"
             onClick={() => void appWindow.openExternal(footerActionUrl)}
             aria-label={footerActionTitle}
             title={footerActionTitle}
             className={cn(
-              "titlebar-no-drag relative inline-flex h-7 max-w-[220px] items-center justify-end gap-1.5 whitespace-nowrap text-[11px] font-medium leading-[1.2] normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              "titlebar-no-drag relative inline-flex h-7 max-w-full items-center justify-end gap-1.5 whitespace-nowrap text-[11px] font-medium leading-[1.2] normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
               hasUpdate
                 ? "rounded-[8px] bg-primary/15 px-2 text-primary hover:bg-primary/20 hover:text-[#dfe2ff]"
                 : "px-0 text-[#9fa7ff] hover:text-[#c0c1ff]",
@@ -1141,7 +1156,7 @@ function StatusBar({
           <span
             aria-live={tone === "error" ? "assertive" : "polite"}
             className={cn(
-              "absolute right-0 top-0 flex h-7 max-w-[220px] items-center justify-end text-right text-[11px] font-medium leading-[1.2] normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              "absolute right-0 top-0 flex h-7 max-w-full items-center justify-end text-right text-[11px] font-medium leading-[1.2] normal-case tracking-[0.04em] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
               tone === "error" ? "text-destructive" : "text-[#9fa7ff]",
               message
                 ? "translate-y-0 opacity-100"
@@ -1150,7 +1165,7 @@ function StatusBar({
             style={{ fontFamily: '"Space Grotesk", Inter, "Segoe UI", sans-serif' }}
             title={message}
           >
-            <span className="max-w-[220px] truncate">{message}</span>
+            <span className="max-w-full truncate">{message}</span>
           </span>
         </div>
       </div>

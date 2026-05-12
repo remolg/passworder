@@ -51,9 +51,6 @@ export function EntryFormFields({
   const [showPassword, setShowPassword] = useState(false);
   const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
-  const [shortcutSectionOpen, setShortcutSectionOpen] = useState(
-    Boolean(values.usernameShortcut || values.passwordShortcut),
-  );
   const folderPickerRef = useRef<HTMLDivElement>(null);
   const copyFeedback = useCopyFeedback();
   const strength = getPasswordStrength(values.password);
@@ -62,12 +59,6 @@ export function EntryFormFields({
   const selectedLogo = getLogoOption(values.logoId);
   const selectedFolder =
     folders.find((folder) => folder.id === values.folderId) ?? null;
-
-  useEffect(() => {
-    if (values.usernameShortcut || values.passwordShortcut) {
-      setShortcutSectionOpen(true);
-    }
-  }, [values.usernameShortcut, values.passwordShortcut]);
 
   useEffect(() => {
     if (!folderPickerOpen) {
@@ -433,15 +424,10 @@ export function EntryFormFields({
         </p>
       </FieldGroup>
 
-      <div className="space-y-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] p-3">
-        <button
-          type="button"
-          onClick={() => setShortcutSectionOpen((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 text-left"
-          aria-expanded={shortcutSectionOpen}
-        >
+      <div className="space-y-4 border-t border-white/[0.06] pt-4">
+        <div className="flex w-full items-center gap-2.5 text-left">
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center text-primary">
               <Keyboard className="h-4 w-4" />
             </span>
             <span className="min-w-0">
@@ -453,53 +439,45 @@ export function EntryFormFields({
               </span>
             </span>
           </span>
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-              shortcutSectionOpen && "rotate-180",
-            )}
-          />
-        </button>
+        </div>
 
-        {shortcutSectionOpen ? (
-          <div className="space-y-4 border-t border-white/[0.06] pt-3">
-            <FieldGroup label={t("fields.usernameShortcut")} htmlFor="usernameShortcut">
-              <ShortcutCaptureInput
-                id="usernameShortcut"
-                value={values.usernameShortcut}
-                onChange={(value) => handleShortcutChange("usernameShortcut", value)}
-                onRejected={handleShortcutRejected}
-                placeholder={t("fields.shortcutPlaceholder")}
-                clearLabel={t("fields.clearShortcut")}
-                labels={{
-                  mouseBack: t("fields.mouseBack"),
-                  mouseForward: t("fields.mouseForward"),
-                  mouseMiddle: t("fields.mouseMiddle"),
-                }}
-              />
-            </FieldGroup>
+        <div className="space-y-4">
+          <FieldGroup label={t("fields.usernameShortcut")} htmlFor="usernameShortcut">
+            <ShortcutCaptureInput
+              id="usernameShortcut"
+              value={values.usernameShortcut}
+              onChange={(value) => handleShortcutChange("usernameShortcut", value)}
+              onRejected={handleShortcutRejected}
+              placeholder={t("fields.shortcutPlaceholder")}
+              clearLabel={t("fields.clearShortcut")}
+              labels={{
+                mouseBack: t("fields.mouseBack"),
+                mouseForward: t("fields.mouseForward"),
+                mouseMiddle: t("fields.mouseMiddle"),
+              }}
+            />
+          </FieldGroup>
 
-            <FieldGroup label={t("fields.passwordShortcut")} htmlFor="passwordShortcut">
-              <ShortcutCaptureInput
-                id="passwordShortcut"
-                value={values.passwordShortcut}
-                onChange={(value) => handleShortcutChange("passwordShortcut", value)}
-                onRejected={handleShortcutRejected}
-                placeholder={t("fields.shortcutPlaceholder")}
-                clearLabel={t("fields.clearShortcut")}
-                labels={{
-                  mouseBack: t("fields.mouseBack"),
-                  mouseForward: t("fields.mouseForward"),
-                  mouseMiddle: t("fields.mouseMiddle"),
-                }}
-              />
-            </FieldGroup>
+          <FieldGroup label={t("fields.passwordShortcut")} htmlFor="passwordShortcut">
+            <ShortcutCaptureInput
+              id="passwordShortcut"
+              value={values.passwordShortcut}
+              onChange={(value) => handleShortcutChange("passwordShortcut", value)}
+              onRejected={handleShortcutRejected}
+              placeholder={t("fields.shortcutPlaceholder")}
+              clearLabel={t("fields.clearShortcut")}
+              labels={{
+                mouseBack: t("fields.mouseBack"),
+                mouseForward: t("fields.mouseForward"),
+                mouseMiddle: t("fields.mouseMiddle"),
+              }}
+            />
+          </FieldGroup>
 
-            <p className="text-[11px] leading-5 text-muted-foreground">
-              {t("fields.shortcutHint")}
-            </p>
-          </div>
-        ) : null}
+          <p className="text-[11px] leading-5 text-muted-foreground">
+            {t("fields.shortcutHint")}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -548,6 +526,11 @@ function ShortcutCaptureInput({
   placeholder: string;
   value: string;
 }) {
+  const [pendingModifiers, setPendingModifiers] = useState<string[]>([]);
+  const displayValue = value
+    ? formatShortcutForDisplay(value, labels)
+    : formatPendingShortcut(pendingModifiers);
+
   function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     event.preventDefault();
     event.stopPropagation();
@@ -562,13 +545,32 @@ function ShortcutCaptureInput({
       return;
     }
 
+    const nextPendingModifiers = keyboardEventToModifiers(event);
+    if (isModifierKey(event.key)) {
+      setPendingModifiers(nextPendingModifiers);
+      return;
+    }
+
     const shortcut = keyboardEventToShortcut(event);
     if (shortcut) {
+      setPendingModifiers([]);
       onChange(shortcut);
       return;
     }
 
+    setPendingModifiers([]);
     onRejected("errors.shortcutReserved");
+  }
+
+  function handleKeyUp(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (!isModifierKey(event.key)) {
+      return;
+    }
+
+    const nextModifiers = keyboardEventToModifiers(event).filter(
+      (modifier) => modifier !== normalizeModifierKey(event.key),
+    );
+    setPendingModifiers(nextModifiers);
   }
 
   function handleMouseDown(event: ReactMouseEvent<HTMLInputElement>) {
@@ -579,6 +581,7 @@ function ShortcutCaptureInput({
 
     event.preventDefault();
     event.stopPropagation();
+    setPendingModifiers([]);
     onChange(shortcut);
   }
 
@@ -587,9 +590,11 @@ function ShortcutCaptureInput({
       <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         id={id}
-        value={formatShortcutForDisplay(value, labels)}
+        value={displayValue}
         onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
         onMouseDown={handleMouseDown}
+        onBlur={() => setPendingModifiers([])}
         onPaste={(event) => event.preventDefault()}
         placeholder={placeholder}
         readOnly
@@ -650,17 +655,35 @@ function keyboardEventToShortcut(event: ReactKeyboardEvent<HTMLInputElement>) {
   }
 
   const modifiers = [];
+  modifiers.push(...keyboardEventToModifiers(event));
+
+  return [...modifiers, key].join("+");
+}
+
+function keyboardEventToModifiers(event: ReactKeyboardEvent<HTMLInputElement>) {
+  const modifiers = [];
+
   if (event.ctrlKey) {
     modifiers.push("Control");
   }
+
   if (event.altKey) {
     modifiers.push("Alt");
   }
+
   if (event.shiftKey) {
     modifiers.push("Shift");
   }
 
-  return [...modifiers, key].join("+");
+  return modifiers;
+}
+
+function isModifierKey(key: string) {
+  return key === "Control" || key === "Alt" || key === "Shift";
+}
+
+function normalizeModifierKey(key: string) {
+  return isModifierKey(key) ? key : "";
 }
 
 function normalizeKeyboardKey(key: string, code: string) {
@@ -754,6 +777,14 @@ function mouseButtonToShortcut(button: number) {
   return "";
 }
 
+function formatPendingShortcut(modifiers: string[]) {
+  if (modifiers.length === 0) {
+    return "";
+  }
+
+  return `${formatShortcutKeys(modifiers)} +`;
+}
+
 function formatShortcutForDisplay(
   value: string,
   labels: {
@@ -768,7 +799,14 @@ function formatShortcutForDisplay(
     MouseMiddle: labels.mouseMiddle,
   };
 
-  return mouseLabels[value] ?? value.replace(/\bControl\b/g, "Ctrl");
+  return mouseLabels[value] ?? formatShortcutKeys(value.split("+"));
+}
+
+function formatShortcutKeys(keys: string[]) {
+  return keys
+    .map((key) => (key === "Control" ? "Ctrl" : key))
+    .filter(Boolean)
+    .join("+");
 }
 
 function LogoPickerButton({

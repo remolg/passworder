@@ -45,8 +45,10 @@ contextBridge.exposeInMainWorld("passworder", {
     ipcRenderer.removeListener("vault:entry-secret-copied", listener);
     entrySecretCopiedSubscriptions.delete(subscriptionId);
   },
-  setShortcutsSuspended: (suspended) =>
-    ipcRenderer.invoke("shortcuts:set-suspended", Boolean(suspended)),
+  setShortcutsSuspended: (suspended) => {
+    ipcRenderer.sendSync("shortcuts:set-suspended-sync", Boolean(suspended));
+    return Promise.resolve();
+  },
   getUpdateInfo: () => ipcRenderer.invoke("app:get-update-info"),
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),
