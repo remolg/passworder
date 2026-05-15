@@ -15,7 +15,7 @@
     "package:dir": "npm run build && electron-builder --dir",
     "package:win": "npm run build && electron-builder --win nsis && npm run package:portable",
     "release:win": "npm run package:win",
-    "package:portable": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$v=(node -p \\\"require('./package.json').version\\\"); Compress-Archive -Path release/win-unpacked/* -DestinationPath \\\"release/Passworder-Portable-$v-win-x64.zip\\\" -Force\""
+    "package:portable": "node scripts/package-portable.cjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

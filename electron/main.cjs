@@ -1,6 +1,8 @@
 const fs = require("node:fs");
 const fsPromises = require("node:fs/promises");
 const path = require("node:path");
+const { spawn } = require("node:child_process");
+const crypto = require("node:crypto");
 
 const {
   app,
@@ -33,6 +35,8 @@ const UPDATE_CHECK_URL =
 const UPDATE_RELEASE_URL = "https://github.com/remolg/passworder/releases/latest";
 const UPDATE_CACHE_TTL_MS = 30 * 60 * 1000;
 const UPDATE_DOWNLOAD_DIR = "updates";
+const UPDATE_STAGING_DIR = "staged";
+const UPDATE_APPLY_SCRIPT = "apply-update.ps1";
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
@@ -117,30 +121,19 @@ function getReleaseAssetScore(assetName) {
     name.endsWith(".yaml") ||
     name.endsWith(".json") ||
     name.endsWith(".txt") ||
+    name.endsWith(".sha256") ||
     name.endsWith(".sha512")
   ) {
     return 0;
   }
 
   if (process.platform === "win32") {
-    if (name.includes("setup") && name.endsWith(".exe")) {
+    if (name.includes("portable") && name.endsWith(".zip")) {
       return 100;
     }
 
-    if (name.endsWith(".exe")) {
-      return 90;
-    }
-
-    if (name.includes("portable") && name.endsWith(".zip")) {
-      return 80;
-    }
-
     if (name.endsWith(".zip")) {
-      return 70;
-    }
-
-    if (name.endsWith(".msi")) {
-      return 60;
+      return 80;
     }
   }
 
@@ -159,6 +152,68 @@ function selectReleaseAsset(assets) {
     }))
     .filter(({ asset, score }) => score > 0 && asset?.browser_download_url)
     .sort((left, right) => right.score - left.score)[0]?.asset ?? null;
+}
+
+function getChecksumAssetScore(asset, downloadName) {
+  const name = String(asset?.name ?? "").toLocaleLowerCase("en-US");
+  const targetName = String(downloadName ?? "").toLocaleLowerCase("en-US");
+
+  if (!name || !targetName || !asset?.browser_download_url) {
+    return 0;
+  }
+
+  if (name === `${targetName}.sha256`) {
+    return 100;
+  }
+
+  if (name === `${targetName}.sha512`) {
+    return 90;
+  }
+
+  if (name === `${targetName}.sha256.txt`) {
+    return 80;
+  }
+
+  if (name === `${targetName}.sha512.txt`) {
+    return 70;
+  }
+
+  if (
+    name.endsWith(".txt") &&
+    (name.includes("checksum") || name.includes("sha256") || name.includes("sha512"))
+  ) {
+    return 40;
+  }
+
+  return 0;
+}
+
+function selectChecksumAsset(assets, downloadName) {
+  if (!Array.isArray(assets) || !downloadName) {
+    return null;
+  }
+
+  return assets
+    .map((asset) => ({
+      asset,
+      score: getChecksumAssetScore(asset, downloadName),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => right.score - left.score)[0]?.asset ?? null;
+}
+
+function parseAssetDigest(asset) {
+  const digest = String(asset?.digest ?? "").trim();
+  const match = digest.match(/^(sha256|sha512):([a-f0-9]+)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    algorithm: match[1].toLocaleLowerCase("en-US"),
+    value: match[2].toLocaleLowerCase("en-US"),
+  };
 }
 
 function getUnavailableUpdateInfo() {
@@ -194,6 +249,12 @@ async function getUpdateInfo() {
     const releaseUrl =
       typeof release?.html_url === "string" ? release.html_url : UPDATE_RELEASE_URL;
     const downloadAsset = selectReleaseAsset(release?.assets);
+    const downloadName =
+      typeof downloadAsset?.name === "string" ? downloadAsset.name : undefined;
+    const checksumAsset = downloadName
+      ? selectChecksumAsset(release?.assets, downloadName)
+      : null;
+    const assetDigest = parseAssetDigest(downloadAsset);
 
     updateInfoCache = {
       updateAvailable: Boolean(
@@ -206,8 +267,15 @@ async function getUpdateInfo() {
         typeof downloadAsset?.browser_download_url === "string"
           ? downloadAsset.browser_download_url
           : undefined,
-      downloadName:
-        typeof downloadAsset?.name === "string" ? downloadAsset.name : undefined,
+      downloadName,
+      checksumAlgorithm: assetDigest?.algorithm,
+      checksumValue: assetDigest?.value,
+      checksumUrl:
+        typeof checksumAsset?.browser_download_url === "string"
+          ? checksumAsset.browser_download_url
+          : undefined,
+      checksumName:
+        typeof checksumAsset?.name === "string" ? checksumAsset.name : undefined,
     };
   } catch {
     updateInfoCache = getUnavailableUpdateInfo();
@@ -249,7 +317,7 @@ function sanitizeDownloadName(name) {
     .replace(/[<>:"/\\|?*\x00-\x1f]/g, "-")
     .replace(/\s+/g, " ");
 
-  return safeName || "Passworder-Update.exe";
+  return safeName || "Passworder-Update.zip";
 }
 
 function validateUpdateDownloadUrl(downloadUrl) {
@@ -276,6 +344,286 @@ function closeFileStream(fileStream) {
   return new Promise((resolve, reject) => {
     fileStream.once("error", reject);
     fileStream.end(resolve);
+  });
+}
+
+function calculateFileHash(filePath, algorithm) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash(algorithm);
+    const stream = fs.createReadStream(filePath);
+
+    stream.on("data", (chunk) => {
+      hash.update(chunk);
+    });
+    stream.on("error", reject);
+    stream.on("end", () => {
+      resolve(hash.digest("hex"));
+    });
+  });
+}
+
+function parseChecksumText(text, downloadName, expectedAlgorithm) {
+  const lines = String(text ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const targetName = String(downloadName ?? "").toLocaleLowerCase("en-US");
+  const algorithms = expectedAlgorithm
+    ? [expectedAlgorithm]
+    : ["sha256", "sha512"];
+
+  for (const line of lines) {
+    const lowerLine = line.toLocaleLowerCase("en-US");
+    const referencesDownload = targetName ? lowerLine.includes(targetName) : false;
+
+    for (const algorithm of algorithms) {
+      const length = algorithm === "sha512" ? 128 : 64;
+      const match = line.match(new RegExp(`\\b([a-fA-F0-9]{${length}})\\b`));
+
+      if (match && (referencesDownload || lines.length === 1)) {
+        return {
+          algorithm,
+          value: match[1].toLocaleLowerCase("en-US"),
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function inferChecksumAlgorithm(name) {
+  const lowerName = String(name ?? "").toLocaleLowerCase("en-US");
+
+  if (lowerName.includes("sha512")) {
+    return "sha512";
+  }
+
+  if (lowerName.includes("sha256")) {
+    return "sha256";
+  }
+
+  return undefined;
+}
+
+async function resolveExpectedChecksum(updateInfo) {
+  if (updateInfo.checksumAlgorithm && updateInfo.checksumValue) {
+    return {
+      algorithm: updateInfo.checksumAlgorithm,
+      value: updateInfo.checksumValue,
+    };
+  }
+
+  if (!updateInfo.checksumUrl || !validateUpdateDownloadUrl(updateInfo.checksumUrl)) {
+    return null;
+  }
+
+  const response = await fetch(updateInfo.checksumUrl, {
+    headers: {
+      "User-Agent": "Passworder Update Checksum",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("errors.updateVerificationFailed");
+  }
+
+  const checksumText = await response.text();
+  return parseChecksumText(
+    checksumText,
+    updateInfo.downloadName,
+    inferChecksumAlgorithm(updateInfo.checksumName),
+  );
+}
+
+async function verifyDownloadedUpdatePackage(downloadPath, updateInfo) {
+  const expectedChecksum = await resolveExpectedChecksum(updateInfo);
+
+  if (!expectedChecksum) {
+    throw new Error("errors.updateVerificationFailed");
+  }
+
+  const actualChecksum = await calculateFileHash(
+    downloadPath,
+    expectedChecksum.algorithm,
+  );
+
+  if (actualChecksum !== expectedChecksum.value) {
+    throw new Error("errors.updateVerificationFailed");
+  }
+}
+
+function runHiddenPowerShell(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("powershell.exe", args, {
+      windowsHide: true,
+      stdio: "ignore",
+    });
+
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`PowerShell exited with code ${code}`));
+    });
+  });
+}
+
+async function expandUpdateArchive(archivePath, destinationPath) {
+  await runHiddenPowerShell([
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-Command",
+    "& { param($ArchivePath, $DestinationPath) Expand-Archive -LiteralPath $ArchivePath -DestinationPath $DestinationPath -Force }",
+    archivePath,
+    destinationPath,
+  ]);
+}
+
+async function pathExists(filePath) {
+  try {
+    await fsPromises.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function findExtractedAppDirectory(extractDirectory) {
+  const exeName = path.basename(process.execPath);
+  const candidates = [extractDirectory];
+  const entries = await fsPromises.readdir(extractDirectory, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      candidates.push(path.join(extractDirectory, entry.name));
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (
+      (await pathExists(path.join(candidate, exeName))) ||
+      (await pathExists(path.join(candidate, "Passworder.exe")))
+    ) {
+      return candidate;
+    }
+  }
+
+  throw new Error("errors.updatePackageInvalid");
+}
+
+async function prepareDownloadedUpdatePackage(downloadPath) {
+  const stagingRoot = path.join(getUpdateDownloadDirectory(), UPDATE_STAGING_DIR);
+  const extractDirectory = path.join(stagingRoot, `passworder-${Date.now()}`);
+
+  await fsPromises.rm(stagingRoot, { recursive: true, force: true });
+  await fsPromises.mkdir(extractDirectory, { recursive: true });
+  await expandUpdateArchive(downloadPath, extractDirectory);
+
+  return findExtractedAppDirectory(extractDirectory);
+}
+
+function assertSafeUpdateTarget(targetDirectory, sourceDirectory) {
+  const resolvedTarget = path.resolve(targetDirectory);
+  const resolvedSource = path.resolve(sourceDirectory);
+  const root = path.parse(resolvedTarget).root;
+
+  if (
+    resolvedTarget === root ||
+    resolvedTarget.length < root.length + 4 ||
+    resolvedTarget === resolvedSource
+  ) {
+    throw new Error("errors.updateInstallUnavailable");
+  }
+}
+
+async function writeUpdateApplyScript() {
+  const scriptPath = path.join(getUpdateDownloadDirectory(), UPDATE_APPLY_SCRIPT);
+  const scriptContent = [
+    "param(",
+    "  [int]$ProcessId,",
+    "  [string]$SourceDir,",
+    "  [string]$TargetDir,",
+    "  [string]$ExePath,",
+    "  [string]$LogPath",
+    ")",
+    "$ErrorActionPreference = 'Stop'",
+    "function Write-UpdateLog([string]$Message) {",
+    "  $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'",
+    "  Add-Content -LiteralPath $LogPath -Value \"[$stamp] $Message\" -Encoding UTF8",
+    "}",
+    "try {",
+    "  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LogPath) | Out-Null",
+    "  Write-UpdateLog 'Waiting for Passworder to close.'",
+    "  if ($ProcessId -gt 0) {",
+    "    Wait-Process -Id $ProcessId -Timeout 45 -ErrorAction SilentlyContinue",
+    "  }",
+    "  $exeName = Split-Path -Leaf $ExePath",
+    "  if (-not (Test-Path -LiteralPath (Join-Path $SourceDir $exeName)) -and -not (Test-Path -LiteralPath (Join-Path $SourceDir 'Passworder.exe'))) {",
+    "    throw 'Update package executable missing.'",
+    "  }",
+    "  Write-UpdateLog 'Copying update files.'",
+    "  & robocopy $SourceDir $TargetDir /E /R:10 /W:1 /NFL /NDL /NJH /NJS /NC /NS /NP",
+    "  $code = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }",
+    "  if ($code -ge 8) {",
+    "    throw \"robocopy failed with code $code\"",
+    "  }",
+    "  Write-UpdateLog 'Restarting Passworder.'",
+    "  Start-Process -FilePath $ExePath",
+    "  Write-UpdateLog 'Update applied.'",
+    "} catch {",
+    "  Write-UpdateLog (\"Update failed: \" + $_.Exception.Message)",
+    "  if (Test-Path -LiteralPath $ExePath) {",
+    "    Start-Process -FilePath $ExePath",
+    "  }",
+    "  exit 1",
+    "}",
+    "",
+  ].join("\r\n");
+
+  await fsPromises.writeFile(scriptPath, scriptContent, "utf8");
+  return scriptPath;
+}
+
+function launchDetachedUpdateScript(scriptPath, sourceDirectory) {
+  return new Promise((resolve, reject) => {
+    const targetDirectory = path.dirname(process.execPath);
+    const logPath = path.join(getUpdateDownloadDirectory(), "update.log");
+    const child = spawn(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        scriptPath,
+        "-ProcessId",
+        String(process.pid),
+        "-SourceDir",
+        sourceDirectory,
+        "-TargetDir",
+        targetDirectory,
+        "-ExePath",
+        process.execPath,
+        "-LogPath",
+        logPath,
+      ],
+      {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      },
+    );
+
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
   });
 }
 
@@ -314,6 +662,16 @@ async function doDownloadUpdateInstaller() {
 
   const downloadDirectory = getUpdateDownloadDirectory();
   const downloadName = sanitizeDownloadName(updateInfo.downloadName);
+
+  if (!downloadName.toLocaleLowerCase("en-US").endsWith(".zip")) {
+    setUpdateDownloadState({
+      status: "error",
+      progress: 0,
+      error: "errors.updateDownloadUnavailable",
+    });
+    throw new Error("errors.updateDownloadUnavailable");
+  }
+
   const downloadPath = path.join(downloadDirectory, downloadName);
   const temporaryPath = `${downloadPath}.download`;
 
@@ -377,6 +735,7 @@ async function doDownloadUpdateInstaller() {
     await closeFileStream(fileStream);
     await fsPromises.rm(downloadPath, { force: true });
     await fsPromises.rename(temporaryPath, downloadPath);
+    await verifyDownloadedUpdatePackage(downloadPath, updateInfo);
 
     return setUpdateDownloadState({
       status: "ready",
@@ -389,10 +748,16 @@ async function doDownloadUpdateInstaller() {
   } catch (error) {
     fileStream.destroy();
     await fsPromises.rm(temporaryPath, { force: true }).catch(() => {});
+    await fsPromises.rm(downloadPath, { force: true }).catch(() => {});
+    const errorKey =
+      error instanceof Error && error.message === "errors.updateVerificationFailed"
+        ? "errors.updateVerificationFailed"
+        : "errors.updateDownloadFailed";
+
     setUpdateDownloadState({
       status: "error",
       progress: 0,
-      error: "errors.updateDownloadFailed",
+      error: errorKey,
     });
     throw error;
   }
@@ -403,22 +768,42 @@ async function installDownloadedUpdate() {
     throw new Error("errors.updateInstallerMissing");
   }
 
-  await fsPromises.access(updateDownloadState.filePath);
-  const launchError = await shell.openPath(updateDownloadState.filePath);
-
-  if (launchError) {
-    throw new Error("errors.updateInstallerLaunchFailed");
+  if (process.platform !== "win32" || !app.isPackaged) {
+    throw new Error("errors.updateInstallUnavailable");
   }
 
   setUpdateDownloadState({
     status: "installing",
     progress: 100,
+    error: undefined,
   });
+
+  try {
+    await fsPromises.access(updateDownloadState.filePath);
+    const sourceDirectory = await prepareDownloadedUpdatePackage(
+      updateDownloadState.filePath,
+    );
+    const targetDirectory = path.dirname(process.execPath);
+    assertSafeUpdateTarget(targetDirectory, sourceDirectory);
+    const scriptPath = await writeUpdateApplyScript();
+    await launchDetachedUpdateScript(scriptPath, sourceDirectory);
+  } catch (error) {
+    setUpdateDownloadState({
+      status: "error",
+      progress: 0,
+      error:
+        error instanceof Error &&
+        error.message.startsWith("errors.update")
+          ? error.message
+          : "errors.updateInstallerLaunchFailed",
+    });
+    throw error;
+  }
 
   setTimeout(() => {
     isQuitting = true;
     app.quit();
-  }, 1_000);
+  }, 300);
 
   return toRendererUpdateDownloadState();
 }

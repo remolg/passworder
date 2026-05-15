@@ -31,8 +31,8 @@ const EN_TRANSLATIONS = {
   "status.downloadUpdate": "Download update",
   "status.downloadUpdateTitle": "New version available. Click to download.",
   "status.downloadingUpdate": "Downloading {progress}%",
-  "status.installUpdate": "Install update",
-  "status.installingUpdate": "Opening installer",
+  "status.installUpdate": "Restart and update",
+  "status.installingUpdate": "Installing update",
   "status.updateDownloadFailed": "Update failed",
   "dialog.deleteEntryTitle": "Delete entry?",
   "dialog.deleteEntryConfirm": "Are you sure you want to delete {service}?",
@@ -207,10 +207,15 @@ const EN_TRANSLATIONS = {
   "errors.desktopRestartRequired":
     "Electron bridge was updated. Fully restart the desktop app to use the latest actions.",
   "errors.updateDownloadUnavailable":
-    "Update installer could not be found.",
+    "Update package could not be found.",
   "errors.updateDownloadFailed": "Update download failed.",
-  "errors.updateInstallerMissing": "Downloaded installer was not found.",
-  "errors.updateInstallerLaunchFailed": "Update installer could not be opened.",
+  "errors.updateVerificationFailed":
+    "Update verification failed.",
+  "errors.updateInstallerMissing": "Downloaded update package was not found.",
+  "errors.updateInstallerLaunchFailed": "Update could not be applied.",
+  "errors.updateInstallUnavailable":
+    "In-app update can only run in the packaged Windows app.",
+  "errors.updatePackageInvalid": "Downloaded update package is invalid.",
   "errors.importFileInvalid":
     "The selected file is not a valid Passworder export.",
   "errors.vaultLocked": "Vault is locked.",
@@ -283,8 +288,8 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "status.downloadUpdate": "Yeni sürümü indir",
   "status.downloadUpdateTitle": "Yeni sürüm mevcut. İndirmek için tıkla.",
   "status.downloadingUpdate": "İndiriliyor %{progress}",
-  "status.installUpdate": "Güncellemeyi kur",
-  "status.installingUpdate": "Kurulum açılıyor",
+  "status.installUpdate": "Yeniden başlat ve güncelle",
+  "status.installingUpdate": "Güncelleme kuruluyor",
   "status.updateDownloadFailed": "Güncelleme başarısız",
   "dialog.deleteEntryTitle": "Kayıt silinsin mi?",
   "dialog.deleteEntryConfirm":
@@ -461,10 +466,15 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "errors.desktopRestartRequired":
     "Electron köprüsü güncellendi. En yeni işlemleri kullanmak için masaüstü uygulamayı tamamen yeniden başlatın.",
   "errors.updateDownloadUnavailable":
-    "Güncelleme kurulum dosyası bulunamadı.",
+    "Güncelleme paketi bulunamadı.",
   "errors.updateDownloadFailed": "Güncelleme indirilemedi.",
-  "errors.updateInstallerMissing": "İndirilen kurulum dosyası bulunamadı.",
-  "errors.updateInstallerLaunchFailed": "Güncelleme kurucusu açılamadı.",
+  "errors.updateVerificationFailed":
+    "Güncelleme doğrulaması başarısız.",
+  "errors.updateInstallerMissing": "İndirilen güncelleme paketi bulunamadı.",
+  "errors.updateInstallerLaunchFailed": "Güncelleme uygulanamadı.",
+  "errors.updateInstallUnavailable":
+    "Uygulama içi güncelleme yalnızca paketlenmiş Windows uygulamasında çalışır.",
+  "errors.updatePackageInvalid": "İndirilen güncelleme paketi geçersiz.",
   "errors.importFileInvalid":
     "Seçilen dosya geçerli bir Passworder aktarım dosyası değil.",
   "errors.vaultLocked": "Kasa kilitli.",
