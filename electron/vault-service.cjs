@@ -14,7 +14,8 @@ const VERIFY_TOKEN = Buffer.from("passworder:master-key-check:v1", "utf8");
 const KEY_LENGTH = 32;
 const NONCE_LENGTH = 12;
 const EXPORT_TYPE = "passworder.entries.export";
-const EXPORT_VERSION = 1;
+const EXPORT_VERSION = 2;
+const EXPORT_LEGACY_VERSION = 1;
 const MIN_MASTER_PASSWORD_LENGTH = 3;
 const SHORTCUT_MODIFIER_ORDER = ["Control", "Alt", "Shift"];
 const SHORTCUT_MODIFIER_ALIASES = new Map([
@@ -614,7 +615,84 @@ function normalizeImportedEntry(entry, folderIds) {
   };
 }
 
-function parseImportFile(fileContent) {
+function isEncryptedExportBlob(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    typeof value.nonceB64 === "string" &&
+    typeof value.ciphertextB64 === "string" &&
+    typeof value.authTagB64 === "string"
+  );
+}
+
+function isExportKdfConfig(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    value.algorithm === "scrypt" &&
+    typeof value.saltB64 === "string" &&
+    Number.isFinite(value.cost) &&
+    Number.isFinite(value.blockSize) &&
+    Number.isFinite(value.parallelization) &&
+    Number.isFinite(value.keyLength)
+  );
+}
+
+function normalizeImportPayload(rawPayload) {
+  if (!rawPayload || typeof rawPayload !== "object" || !Array.isArray(rawPayload.entries)) {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  const folders = Array.isArray(rawPayload.folders)
+    ? normalizeFolders(rawPayload.folders.map((folder) => normalizeImportedFolder(folder)))
+    : [];
+  const folderIds = new Set(folders.map((folder) => folder.id));
+
+  return {
+    entries: rawPayload.entries.map((entry) => normalizeImportedEntry(entry, folderIds)),
+    folders,
+  };
+}
+
+function parseLegacyImportFile(parsed) {
+  return normalizeImportPayload(parsed);
+}
+
+function parseEncryptedImportFile(parsed, password) {
+  if (!password || !password.trim()) {
+    throw new Error("errors.exportPasswordRequired");
+  }
+
+  if (
+    !isExportKdfConfig(parsed.kdf) ||
+    parsed.cipher !== "aes-256-gcm" ||
+    !isEncryptedExportBlob(parsed.verification) ||
+    !isEncryptedExportBlob(parsed.payload)
+  ) {
+    throw new Error("errors.importFileInvalid");
+  }
+
+  const key = deriveKey(password, parsed.kdf);
+
+  try {
+    if (!verifyMasterPassword(key, parsed.verification)) {
+      throw new Error("errors.exportPasswordInvalid");
+    }
+
+    const decryptedPayload = decryptJson(key, parsed.payload);
+    return normalizeImportPayload(decryptedPayload);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("errors.")) {
+      throw error;
+    }
+
+    throw new Error("errors.exportPasswordInvalid");
+  } finally {
+    key.fill(0);
+  }
+}
+
+function parseImportFile(fileContent, password) {
   let parsed;
 
   try {
@@ -623,23 +701,19 @@ function parseImportFile(fileContent) {
     throw new Error("errors.importFileInvalid");
   }
 
-  if (
-    parsed?.type !== EXPORT_TYPE ||
-    parsed?.version !== EXPORT_VERSION ||
-    !Array.isArray(parsed?.entries)
-  ) {
+  if (parsed?.type !== EXPORT_TYPE) {
     throw new Error("errors.importFileInvalid");
   }
 
-  const folders = Array.isArray(parsed?.folders)
-    ? normalizeFolders(parsed.folders.map((folder) => normalizeImportedFolder(folder)))
-    : [];
-  const folderIds = new Set(folders.map((folder) => folder.id));
+  if (parsed?.version === EXPORT_LEGACY_VERSION) {
+    return parseLegacyImportFile(parsed);
+  }
 
-  return {
-    entries: parsed.entries.map((entry) => normalizeImportedEntry(entry, folderIds)),
-    folders,
-  };
+  if (parsed?.version === EXPORT_VERSION) {
+    return parseEncryptedImportFile(parsed, password);
+  }
+
+  throw new Error("errors.importFileInvalid");
 }
 
 function resolveEntryFolderId(input, existingEntry, folderIds) {
@@ -875,24 +949,50 @@ async function deleteFolder(storagePath, id) {
   return currentSession.payload;
 }
 
-async function exportEntries(storagePath, exportPath) {
+function validateExportPassword(password) {
+  if (!password || password.trim().length === 0) {
+    throw new Error("errors.exportPasswordRequired");
+  }
+
+  if (password.length < MIN_MASTER_PASSWORD_LENGTH) {
+    throw new Error("errors.exportPasswordTooShort");
+  }
+}
+
+async function exportEntries(storagePath, exportPath, password) {
   const currentSession = ensureUnlockedSession();
-  const exportPayload = {
-    type: EXPORT_TYPE,
-    version: EXPORT_VERSION,
-    app: "Passworder",
-    exportedAt: isoNow(),
+  validateExportPassword(password);
+
+  const plainPayload = {
     folders: currentSession.payload.folders.map((folder) => cloneFolder(folder)),
     entries: currentSession.payload.entries.map((entry) => cloneEntry(entry)),
   };
 
-  await fs.writeFile(exportPath, JSON.stringify(exportPayload, null, 2), "utf8");
+  const kdf = createKdfConfig();
+  const key = deriveKey(password, kdf);
+
+  try {
+    const exportPayload = {
+      type: EXPORT_TYPE,
+      version: EXPORT_VERSION,
+      app: "Passworder",
+      exportedAt: isoNow(),
+      kdf,
+      cipher: "aes-256-gcm",
+      verification: encryptBytes(key, VERIFY_TOKEN),
+      payload: encryptJson(key, plainPayload),
+    };
+
+    await fs.writeFile(exportPath, JSON.stringify(exportPayload, null, 2), "utf8");
+  } finally {
+    key.fill(0);
+  }
 }
 
-async function importEntries(storagePath, importPath) {
+async function importEntries(storagePath, importPath, password) {
   const currentSession = ensureUnlockedSession();
   const fileContent = await fs.readFile(importPath, "utf8");
-  const importedPayload = parseImportFile(fileContent);
+  const importedPayload = parseImportFile(fileContent, password);
   const currentFolders = currentSession.payload.folders.slice();
   const folderIndexById = new Map(
     currentFolders.map((folder, index) => [folder.id, index]),

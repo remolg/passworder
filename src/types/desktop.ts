@@ -48,8 +48,8 @@ export interface DesktopVaultApi {
   createFolder: (input: FolderMutationInput) => Promise<VaultPayload>;
   updateFolder: (input: FolderMutationInput) => Promise<VaultPayload>;
   deleteFolder: (id: string) => Promise<VaultPayload>;
-  exportEntries: () => Promise<ExportEntriesResult>;
-  importEntries: () => Promise<ImportEntriesResult>;
+  exportEntries: (password: string) => Promise<ExportEntriesResult>;
+  importEntries: (password?: string) => Promise<ImportEntriesResult>;
   reorderEntries: (entryIds: string[]) => Promise<VaultPayload>;
   reorderFolders: (folderIds: string[]) => Promise<VaultPayload>;
   deleteEntry: (id: string) => Promise<VaultPayload>;

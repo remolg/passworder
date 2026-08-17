@@ -1021,7 +1021,11 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:delete-folder", async (_event, id) =>
     vaultService.deleteFolder(getVaultStoragePath(), id),
   );
-  ipcMain.handle("vault:export-entries", async () => {
+  ipcMain.handle("vault:export-entries", async (_event, password) => {
+    if (typeof password !== "string" || !password.trim()) {
+      throw new Error("errors.exportPasswordRequired");
+    }
+
     const result = await dialog.showSaveDialog(mainWindow ?? undefined, {
       defaultPath: getDefaultExportPath(),
       filters: [{ name: "JSON", extensions: ["json"] }],
@@ -1032,10 +1036,14 @@ function registerIpcHandlers() {
       return { completed: false };
     }
 
-    await vaultService.exportEntries(getVaultStoragePath(), result.filePath);
+    await vaultService.exportEntries(
+      getVaultStoragePath(),
+      result.filePath,
+      password,
+    );
     return { completed: true };
   });
-  ipcMain.handle("vault:import-entries", async () => {
+  ipcMain.handle("vault:import-entries", async (_event, password) => {
     const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
       filters: [{ name: "JSON", extensions: ["json"] }],
       properties: ["openFile"],
@@ -1048,6 +1056,7 @@ function registerIpcHandlers() {
     const payload = await vaultService.importEntries(
       getVaultStoragePath(),
       result.filePaths[0],
+      typeof password === "string" ? password : "",
     );
 
     refreshEntryShortcuts();

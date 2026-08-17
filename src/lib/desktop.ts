@@ -72,11 +72,11 @@ export const vaultApi = {
   async deleteFolder(id: string) {
     return getDesktopApi().deleteFolder(id) as Promise<VaultPayload>;
   },
-  async exportEntries() {
-    return getDesktopApi().exportEntries() as Promise<ExportEntriesResult>;
+  async exportEntries(password: string) {
+    return getDesktopApi().exportEntries(password) as Promise<ExportEntriesResult>;
   },
-  async importEntries() {
-    return getDesktopApi().importEntries() as Promise<ImportEntriesResult>;
+  async importEntries(password?: string) {
+    return getDesktopApi().importEntries(password) as Promise<ImportEntriesResult>;
   },
   async reorderEntries(entryIds: string[]) {
     const api = getDesktopApi() as Partial<DesktopVaultApi>;

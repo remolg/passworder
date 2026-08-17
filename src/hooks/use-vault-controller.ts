@@ -240,13 +240,13 @@ export function useVaultController() {
     return true;
   }
 
-  async function exportEntries() {
+  async function exportEntries(password: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
 
     try {
-      const result = await vaultApi.exportEntries();
+      const result = await vaultApi.exportEntries(password);
       if (!result.completed) {
         return false;
       }
@@ -261,13 +261,13 @@ export function useVaultController() {
     }
   }
 
-  async function importEntries() {
+  async function importEntries(password?: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
 
     try {
-      const result = await vaultApi.importEntries();
+      const result = await vaultApi.importEntries(password);
       if (!result.completed || !result.payload) {
         return false;
       }

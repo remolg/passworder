@@ -13,6 +13,14 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type TranslationKey, useI18n } from "@/lib/i18n";
@@ -25,8 +33,8 @@ interface VaultSettingsCardProps {
   busy?: boolean;
   settings: VaultSettings;
   storagePath?: string;
-  onExport?: () => void | Promise<unknown>;
-  onImport?: () => void | Promise<unknown>;
+  onExport?: (password: string) => void | Promise<unknown>;
+  onImport?: (password?: string) => void | Promise<unknown>;
   onChangeMasterPassword?: (
     currentPassword: string,
     nextPassword: string,
@@ -49,6 +57,13 @@ export function VaultSettingsCard({
   const [nextPassword, setNextPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<TranslationKey | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [exportPassword, setExportPassword] = useState("");
+  const [exportPasswordConfirm, setExportPasswordConfirm] = useState("");
+  const [importPassword, setImportPassword] = useState("");
+  const [exportError, setExportError] = useState<TranslationKey | null>(null);
+  const [importError, setImportError] = useState<TranslationKey | null>(null);
   const autoLockOptions = useMemo(
     () =>
       [1, 3, 5, 10, 15, 30].map((minutes) => ({
@@ -105,6 +120,55 @@ export function VaultSettingsCard({
     setNextPassword("");
     setConfirmPassword("");
     setPasswordError(null);
+  }
+
+  function resetExportDialog() {
+    setExportPassword("");
+    setExportPasswordConfirm("");
+    setExportError(null);
+  }
+
+  function resetImportDialog() {
+    setImportPassword("");
+    setImportError(null);
+  }
+
+  async function handleExportSubmit() {
+    setExportError(null);
+
+    if (!exportPassword.trim()) {
+      setExportError("errors.exportPasswordRequired");
+      return;
+    }
+
+    if (exportPassword.length < MIN_MASTER_PASSWORD_LENGTH) {
+      setExportError("errors.exportPasswordTooShort");
+      return;
+    }
+
+    if (exportPassword !== exportPasswordConfirm) {
+      setExportError("errors.exportPasswordMismatch");
+      return;
+    }
+
+    const result = await onExport?.(exportPassword);
+    if (result === false) {
+      return;
+    }
+
+    resetExportDialog();
+    setExportDialogOpen(false);
+  }
+
+  async function handleImportSubmit() {
+    setImportError(null);
+    const result = await onImport?.(importPassword);
+    if (result === false) {
+      return;
+    }
+
+    resetImportDialog();
+    setImportDialogOpen(false);
   }
 
   return (
@@ -255,13 +319,18 @@ export function VaultSettingsCard({
             </p>
           </div>
 
+          <p className="mt-3 text-[12px] leading-6 text-foreground/88">
+            {t("settings.transferDescription")}
+          </p>
+
           <div className="mt-4 space-y-3">
             <TransferActionCard
               icon={<Download className="h-4 w-4" />}
               title={t("settings.exportEntries")}
               disabled={busy}
               onClick={() => {
-                void onExport?.();
+                resetExportDialog();
+                setExportDialogOpen(true);
               }}
             />
 
@@ -270,7 +339,8 @@ export function VaultSettingsCard({
               title={t("settings.importEntries")}
               disabled={busy}
               onClick={() => {
-                void onImport?.();
+                resetImportDialog();
+                setImportDialogOpen(true);
               }}
             />
           </div>
@@ -291,6 +361,121 @@ export function VaultSettingsCard({
         </div>
       </div>
 
+      <Dialog
+        open={exportDialogOpen}
+        onOpenChange={(open) => {
+          setExportDialogOpen(open);
+          if (!open) {
+            resetExportDialog();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("settings.exportDialogTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("settings.exportDialogDescription")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleExportSubmit();
+            }}
+          >
+            <PasswordField
+              id="export-backup-password"
+              label={t("settings.exportPasswordLabel")}
+              value={exportPassword}
+              placeholder={t("settings.exportPasswordPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setExportPassword(value);
+                if (exportError) {
+                  setExportError(null);
+                }
+              }}
+            />
+
+            <PasswordField
+              id="export-backup-password-confirm"
+              label={t("settings.exportPasswordConfirmLabel")}
+              value={exportPasswordConfirm}
+              placeholder={t("settings.exportPasswordConfirmPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setExportPasswordConfirm(value);
+                if (exportError) {
+                  setExportError(null);
+                }
+              }}
+            />
+
+            {exportError ? (
+              <p className="text-[12px] text-destructive">{t(exportError)}</p>
+            ) : null}
+
+            <DialogFooter>
+              <Button type="submit" disabled={busy || !onExport} className="w-full">
+                {t("settings.exportConfirm")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={importDialogOpen}
+        onOpenChange={(open) => {
+          setImportDialogOpen(open);
+          if (!open) {
+            resetImportDialog();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("settings.importDialogTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("settings.importDialogDescription")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleImportSubmit();
+            }}
+          >
+            <PasswordField
+              id="import-backup-password"
+              label={t("settings.importPasswordLabel")}
+              value={importPassword}
+              placeholder={t("settings.importPasswordPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setImportPassword(value);
+                if (importError) {
+                  setImportError(null);
+                }
+              }}
+            />
+
+            {importError ? (
+              <p className="text-[12px] text-destructive">{t(importError)}</p>
+            ) : null}
+
+            <DialogFooter>
+              <Button type="submit" disabled={busy || !onImport} className="w-full">
+                {t("settings.importConfirm")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
