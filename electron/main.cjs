@@ -835,6 +835,8 @@ function createMainWindow() {
     },
   });
 
+  applyContentProtection();
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
@@ -852,9 +854,14 @@ function createMainWindow() {
   }
 
   mainWindow.once("ready-to-show", () => {
+    applyContentProtection();
     if (!isHiddenLaunch) {
       showMainWindow();
     }
+  });
+
+  mainWindow.on("show", () => {
+    applyContentProtection();
   });
 
   mainWindow.on("minimize", (event) => {
@@ -894,6 +901,14 @@ function hideMainWindow() {
 
   mainWindow.setSkipTaskbar(true);
   mainWindow.hide();
+}
+
+function applyContentProtection() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  mainWindow.setContentProtection(true);
 }
 
 function createTray() {
