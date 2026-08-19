@@ -75,6 +75,14 @@ function getDefaultExportPath() {
   return path.join(app.getPath("documents"), `passworder-export-${date}.json`);
 }
 
+function toTransferErrorKey(error) {
+  if (error instanceof Error && error.message.startsWith("errors.")) {
+    return error.message;
+  }
+
+  return "errors.unexpected";
+}
+
 function getUpdateDownloadDirectory() {
   return path.join(app.getPath("userData"), UPDATE_DOWNLOAD_DIR);
 }
@@ -1037,49 +1045,57 @@ function registerIpcHandlers() {
     vaultService.deleteFolder(getVaultStoragePath(), id),
   );
   ipcMain.handle("vault:export-entries", async (_event, password) => {
-    if (typeof password !== "string" || !password.trim()) {
-      throw new Error("errors.exportPasswordRequired");
+    try {
+      if (typeof password !== "string" || !password.trim()) {
+        return { completed: false, error: "errors.exportPasswordRequired" };
+      }
+
+      const result = await dialog.showSaveDialog(mainWindow ?? undefined, {
+        defaultPath: getDefaultExportPath(),
+        filters: [{ name: "JSON", extensions: ["json"] }],
+        properties: ["createDirectory", "showOverwriteConfirmation"],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { completed: false };
+      }
+
+      await vaultService.exportEntries(
+        getVaultStoragePath(),
+        result.filePath,
+        password,
+      );
+      return { completed: true };
+    } catch (error) {
+      return { completed: false, error: toTransferErrorKey(error) };
     }
-
-    const result = await dialog.showSaveDialog(mainWindow ?? undefined, {
-      defaultPath: getDefaultExportPath(),
-      filters: [{ name: "JSON", extensions: ["json"] }],
-      properties: ["createDirectory", "showOverwriteConfirmation"],
-    });
-
-    if (result.canceled || !result.filePath) {
-      return { completed: false };
-    }
-
-    await vaultService.exportEntries(
-      getVaultStoragePath(),
-      result.filePath,
-      password,
-    );
-    return { completed: true };
   });
   ipcMain.handle("vault:import-entries", async (_event, password) => {
-    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
-      filters: [{ name: "JSON", extensions: ["json"] }],
-      properties: ["openFile"],
-    });
+    try {
+      const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+        filters: [{ name: "JSON", extensions: ["json"] }],
+        properties: ["openFile"],
+      });
 
-    if (result.canceled || result.filePaths.length === 0) {
-      return { completed: false };
+      if (result.canceled || result.filePaths.length === 0) {
+        return { completed: false };
+      }
+
+      const payload = await vaultService.importEntries(
+        getVaultStoragePath(),
+        result.filePaths[0],
+        typeof password === "string" ? password : "",
+      );
+
+      refreshEntryShortcuts();
+
+      return {
+        completed: true,
+        payload,
+      };
+    } catch (error) {
+      return { completed: false, error: toTransferErrorKey(error) };
     }
-
-    const payload = await vaultService.importEntries(
-      getVaultStoragePath(),
-      result.filePaths[0],
-      typeof password === "string" ? password : "",
-    );
-
-    refreshEntryShortcuts();
-
-    return {
-      completed: true,
-      payload,
-    };
   });
   ipcMain.handle("vault:reorder-entries", async (_event, entryIds) =>
     vaultService.reorderEntries(getVaultStoragePath(), entryIds),

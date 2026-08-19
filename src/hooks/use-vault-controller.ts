@@ -247,6 +247,12 @@ export function useVaultController() {
 
     try {
       const result = await vaultApi.exportEntries(password);
+      if (result.error) {
+        const message = toErrorMessage(result.error);
+        setError(message);
+        return message;
+      }
+
       if (!result.completed) {
         return false;
       }
@@ -254,8 +260,9 @@ export function useVaultController() {
       setNotice("notice.exportCompleted");
       return true;
     } catch (caughtError) {
-      setError(toErrorMessage(caughtError));
-      return false;
+      const message = toErrorMessage(caughtError);
+      setError(message);
+      return message;
     } finally {
       setBusy(false);
     }
@@ -268,6 +275,12 @@ export function useVaultController() {
 
     try {
       const result = await vaultApi.importEntries(password);
+      if (result.error) {
+        const message = toErrorMessage(result.error);
+        setError(message);
+        return message;
+      }
+
       if (!result.completed || !result.payload) {
         return false;
       }
@@ -276,8 +289,9 @@ export function useVaultController() {
       setNotice("notice.importCompleted");
       return true;
     } catch (caughtError) {
-      setError(toErrorMessage(caughtError));
-      return false;
+      const message = toErrorMessage(caughtError);
+      setError(message);
+      return message;
     } finally {
       setBusy(false);
     }

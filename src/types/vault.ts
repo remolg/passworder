@@ -48,11 +48,13 @@ export interface VaultPayload {
 
 export interface ExportEntriesResult {
   completed: boolean;
+  error?: string;
 }
 
 export interface ImportEntriesResult {
   completed: boolean;
   payload?: VaultPayload;
+  error?: string;
 }
 
 export interface AppStatus {

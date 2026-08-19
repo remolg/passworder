@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type TranslationKey, useI18n } from "@/lib/i18n";
+import { type TranslationKey, isTranslationKey, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { VaultSettings } from "@/types/vault";
 
@@ -156,6 +156,12 @@ export function VaultSettingsCard({
       return;
     }
 
+    const failure = transferResultError(result);
+    if (failure) {
+      setExportError(failure);
+      return;
+    }
+
     resetExportDialog();
     setExportDialogOpen(false);
   }
@@ -164,6 +170,12 @@ export function VaultSettingsCard({
     setImportError(null);
     const result = await onImport?.(importPassword);
     if (result === false) {
+      return;
+    }
+
+    const failure = transferResultError(result);
+    if (failure) {
+      setImportError(failure);
       return;
     }
 
@@ -414,7 +426,9 @@ export function VaultSettingsCard({
             />
 
             {exportError ? (
-              <p className="text-[12px] text-destructive">{t(exportError)}</p>
+              <p className="text-[12px] text-destructive" role="alert">
+                {t(exportError)}
+              </p>
             ) : null}
 
             <DialogFooter>
@@ -465,7 +479,9 @@ export function VaultSettingsCard({
             />
 
             {importError ? (
-              <p className="text-[12px] text-destructive">{t(importError)}</p>
+              <p className="text-[12px] text-destructive" role="alert">
+                {t(importError)}
+              </p>
             ) : null}
 
             <DialogFooter>
@@ -478,6 +494,14 @@ export function VaultSettingsCard({
       </Dialog>
     </section>
   );
+}
+
+function transferResultError(result: unknown): TranslationKey | null {
+  if (typeof result !== "string") {
+    return null;
+  }
+
+  return isTranslationKey(result) ? result : "errors.unexpected";
 }
 
 function PasswordField({
