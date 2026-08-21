@@ -14,7 +14,9 @@
     "start": "electron .",
     "package:dir": "npm run build && electron-builder --dir",
     "package:win": "npm run build && electron-builder --win nsis && npm run package:portable",
+    "package:mac": "npm run build && electron-builder --mac",
     "release:win": "npm run package:win",
+    "release:mac": "npm run package:mac",
     "package:portable": "node scripts/package-portable.cjs"
   },
   "dependencies": {
@@ -55,7 +57,9 @@
       "dist/**/*",
       "electron/**/*",
       "package.json",
-      "build/icon.ico"
+      "build/icon.ico",
+      "build/icon.icns",
+      "build/icon.png"
     ],
     "win": {
       "signAndEditExecutable": false,
@@ -68,6 +72,32 @@
         }
       ],
       "icon": "build/icon.ico"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Passworder-${version}-mac-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "identity": null
+    },
+    "dmg": {
+      "artifactName": "Passworder-${version}-mac-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,

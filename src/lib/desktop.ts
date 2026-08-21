@@ -14,7 +14,20 @@ import {
   DesktopVaultApi,
   EntrySecretCopiedEvent,
   UpdateDownloadState,
+  WindowAnchor,
 } from "@/types/desktop";
+
+const DEFAULT_WINDOW_ANCHOR: WindowAnchor = "bottom-right";
+const WINDOW_ANCHORS: WindowAnchor[] = [
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "bottom-right",
+];
+
+function isWindowAnchor(value: unknown): value is WindowAnchor {
+  return typeof value === "string" && WINDOW_ANCHORS.includes(value as WindowAnchor);
+}
 
 export function isDesktopRuntime() {
   return typeof window !== "undefined" && typeof window.passworder !== "undefined";
@@ -129,6 +142,48 @@ export const appWindow = {
     }
 
     await getDesktopApi().openExternalUrl(url);
+  },
+  supportsAnchor() {
+    return typeof window.passworder?.getWindowAnchor === "function";
+  },
+  async getAnchor() {
+    const getWindowAnchor = window.passworder?.getWindowAnchor;
+    if (!getWindowAnchor) {
+      return DEFAULT_WINDOW_ANCHOR;
+    }
+
+    const anchor = await getWindowAnchor();
+    return isWindowAnchor(anchor) ? anchor : DEFAULT_WINDOW_ANCHOR;
+  },
+  async setAnchor(anchor: WindowAnchor) {
+    const setWindowAnchor = window.passworder?.setWindowAnchor;
+    if (!setWindowAnchor) {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    const nextAnchor = await setWindowAnchor(anchor);
+    return isWindowAnchor(nextAnchor) ? nextAnchor : DEFAULT_WINDOW_ANCHOR;
+  },
+  supportsShowShortcut() {
+    return typeof window.passworder?.getShowShortcut === "function";
+  },
+  async getShowShortcut() {
+    const getShowShortcut = window.passworder?.getShowShortcut;
+    if (!getShowShortcut) {
+      return "";
+    }
+
+    const shortcut = await getShowShortcut();
+    return typeof shortcut === "string" ? shortcut : "";
+  },
+  async setShowShortcut(shortcut: string) {
+    const setShowShortcut = window.passworder?.setShowShortcut;
+    if (!setShowShortcut) {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    const nextShortcut = await setShowShortcut(shortcut);
+    return typeof nextShortcut === "string" ? nextShortcut : "";
   },
 };
 

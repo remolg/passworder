@@ -12,11 +12,13 @@ const {
   ipcMain,
   Menu,
   nativeImage,
+  screen,
   shell,
   Tray,
 } = require("electron");
 
 const vaultService = require("./vault-service.cjs");
+const windowAnchor = require("./window-anchor.cjs");
 
 let mainWindow = null;
 let tray = null;
@@ -37,6 +39,7 @@ const UPDATE_CACHE_TTL_MS = 30 * 60 * 1000;
 const UPDATE_DOWNLOAD_DIR = "updates";
 const UPDATE_STAGING_DIR = "staged";
 const UPDATE_APPLY_SCRIPT = "apply-update.ps1";
+const UPDATE_APPLY_SCRIPT_MAC = "apply-update.sh";
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
@@ -54,11 +57,19 @@ const iconSvg = `
 </svg>`;
 
 function getAppIcon() {
-  const iconPath = path.join(__dirname, "..", "build", "icon.ico");
-  const fileIcon = nativeImage.createFromPath(iconPath);
+  const iconNames =
+    process.platform === "darwin"
+      ? ["icon.icns", "icon.png", "icon.ico"]
+      : ["icon.ico", "icon.png", "icon.icns"];
 
-  if (!fileIcon.isEmpty()) {
-    return fileIcon;
+  for (const iconName of iconNames) {
+    const fileIcon = nativeImage.createFromPath(
+      path.join(__dirname, "..", "build", iconName),
+    );
+
+    if (!fileIcon.isEmpty()) {
+      return fileIcon;
+    }
   }
 
   return nativeImage.createFromDataURL(
@@ -142,6 +153,26 @@ function getReleaseAssetScore(assetName) {
 
     if (name.endsWith(".zip")) {
       return 80;
+    }
+  }
+
+  if (process.platform === "darwin") {
+    const arch = process.arch === "arm64" ? "arm64" : "x64";
+    const matchesArch = name.includes(arch);
+    const isUniversal = name.includes("universal");
+    const isMacBuild =
+      name.includes("mac") || name.includes("darwin") || name.includes("osx");
+
+    if (name.endsWith(".zip") && matchesArch) {
+      return 100;
+    }
+
+    if (name.endsWith(".zip") && isUniversal) {
+      return 95;
+    }
+
+    if (name.endsWith(".zip") && isMacBuild) {
+      return 70;
     }
   }
 
@@ -480,7 +511,31 @@ function runHiddenPowerShell(args) {
   });
 }
 
+function runHiddenProcess(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      windowsHide: true,
+      stdio: "ignore",
+    });
+
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`${path.basename(command)} exited with code ${code}`));
+    });
+  });
+}
+
 async function expandUpdateArchive(archivePath, destinationPath) {
+  if (process.platform === "darwin") {
+    await runHiddenProcess("/usr/bin/ditto", ["-xk", archivePath, destinationPath]);
+    return;
+  }
+
   await runHiddenPowerShell([
     "-NoProfile",
     "-ExecutionPolicy",
@@ -502,6 +557,10 @@ async function pathExists(filePath) {
 }
 
 async function findExtractedAppDirectory(extractDirectory) {
+  if (process.platform === "darwin") {
+    return findExtractedMacApp(extractDirectory);
+  }
+
   const exeName = path.basename(process.execPath);
   const candidates = [extractDirectory];
   const entries = await fsPromises.readdir(extractDirectory, { withFileTypes: true });
@@ -524,6 +583,57 @@ async function findExtractedAppDirectory(extractDirectory) {
   throw new Error("errors.updatePackageInvalid");
 }
 
+async function findExtractedMacApp(extractDirectory) {
+  const candidates = [];
+
+  async function walk(directory, depth) {
+    if (depth > 3) {
+      return;
+    }
+
+    const entries = await fsPromises.readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const fullPath = path.join(directory, entry.name);
+      if (entry.name.endsWith(".app")) {
+        candidates.push(fullPath);
+        continue;
+      }
+
+      await walk(fullPath, depth + 1);
+    }
+  }
+
+  await walk(extractDirectory, 0);
+
+  const preferred =
+    candidates.find((candidate) => path.basename(candidate) === "Passworder.app") ??
+    candidates[0];
+
+  if (!preferred) {
+    throw new Error("errors.updatePackageInvalid");
+  }
+
+  return preferred;
+}
+
+function getMacAppBundlePath() {
+  let current = path.resolve(process.execPath);
+
+  while (current !== path.dirname(current)) {
+    if (current.endsWith(".app")) {
+      return current;
+    }
+
+    current = path.dirname(current);
+  }
+
+  throw new Error("errors.updateInstallUnavailable");
+}
+
 async function prepareDownloadedUpdatePackage(downloadPath) {
   const stagingRoot = path.join(getUpdateDownloadDirectory(), UPDATE_STAGING_DIR);
   const extractDirectory = path.join(stagingRoot, `passworder-${Date.now()}`);
@@ -543,8 +653,13 @@ function assertSafeUpdateTarget(targetDirectory, sourceDirectory) {
   if (
     resolvedTarget === root ||
     resolvedTarget.length < root.length + 4 ||
-    resolvedTarget === resolvedSource
+    resolvedTarget === resolvedSource ||
+    resolvedTarget.startsWith(`${root}Volumes${path.sep}`)
   ) {
+    throw new Error("errors.updateInstallUnavailable");
+  }
+
+  if (process.platform === "darwin" && !resolvedTarget.endsWith(".app")) {
     throw new Error("errors.updateInstallUnavailable");
   }
 }
@@ -595,6 +710,64 @@ async function writeUpdateApplyScript() {
 
   await fsPromises.writeFile(scriptPath, scriptContent, "utf8");
   return scriptPath;
+}
+
+async function writeMacUpdateApplyScript() {
+  const scriptPath = path.join(getUpdateDownloadDirectory(), UPDATE_APPLY_SCRIPT_MAC);
+  const scriptContent = [
+    "#!/bin/bash",
+    "set -euo pipefail",
+    'PROCESS_ID="$1"',
+    'SOURCE_APP="$2"',
+    'TARGET_APP="$3"',
+    'LOG_PATH="$4"',
+    'log() {',
+    '  mkdir -p "$(dirname "$LOG_PATH")"',
+    '  echo "[$(date "+%Y-%m-%d %H:%M:%S")] $1" >> "$LOG_PATH"',
+    "}",
+    "log 'Waiting for Passworder to close.'",
+    'if [ "${PROCESS_ID}" -gt 0 ]; then',
+    "  while kill -0 \"$PROCESS_ID\" 2>/dev/null; do",
+    "    sleep 0.4",
+    "  done",
+    "fi",
+    "sleep 1",
+    'if [ ! -d "$SOURCE_APP" ]; then',
+    "  log 'Update package app missing.'",
+    "  exit 1",
+    "fi",
+    "log 'Copying update files.'",
+    '/usr/bin/ditto "$SOURCE_APP" "$TARGET_APP"',
+    "log 'Restarting Passworder.'",
+    '/usr/bin/open "$TARGET_APP"',
+    "log 'Update applied.'",
+    "",
+  ].join("\n");
+
+  await fsPromises.writeFile(scriptPath, scriptContent, "utf8");
+  await fsPromises.chmod(scriptPath, 0o755);
+  return scriptPath;
+}
+
+function launchDetachedMacUpdateScript(scriptPath, sourceApp) {
+  return new Promise((resolve, reject) => {
+    const targetApp = getMacAppBundlePath();
+    const logPath = path.join(getUpdateDownloadDirectory(), "update.log");
+    const child = spawn(
+      "/bin/bash",
+      [scriptPath, String(process.pid), sourceApp, targetApp, logPath],
+      {
+        detached: true,
+        stdio: "ignore",
+      },
+    );
+
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
 }
 
 function launchDetachedUpdateScript(scriptPath, sourceDirectory) {
@@ -776,7 +949,7 @@ async function installDownloadedUpdate() {
     throw new Error("errors.updateInstallerMissing");
   }
 
-  if (process.platform !== "win32" || !app.isPackaged) {
+  if (!app.isPackaged || (process.platform !== "win32" && process.platform !== "darwin")) {
     throw new Error("errors.updateInstallUnavailable");
   }
 
@@ -791,10 +964,18 @@ async function installDownloadedUpdate() {
     const sourceDirectory = await prepareDownloadedUpdatePackage(
       updateDownloadState.filePath,
     );
-    const targetDirectory = path.dirname(process.execPath);
-    assertSafeUpdateTarget(targetDirectory, sourceDirectory);
-    const scriptPath = await writeUpdateApplyScript();
-    await launchDetachedUpdateScript(scriptPath, sourceDirectory);
+
+    if (process.platform === "darwin") {
+      const targetApp = getMacAppBundlePath();
+      assertSafeUpdateTarget(targetApp, sourceDirectory);
+      const scriptPath = await writeMacUpdateApplyScript();
+      await launchDetachedMacUpdateScript(scriptPath, sourceDirectory);
+    } else {
+      const targetDirectory = path.dirname(process.execPath);
+      assertSafeUpdateTarget(targetDirectory, sourceDirectory);
+      const scriptPath = await writeUpdateApplyScript();
+      await launchDetachedUpdateScript(scriptPath, sourceDirectory);
+    }
   } catch (error) {
     setUpdateDownloadState({
       status: "error",
@@ -843,6 +1024,7 @@ function createMainWindow() {
     },
   });
 
+  applySavedWindowAnchor();
   applyContentProtection();
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -887,6 +1069,32 @@ function createMainWindow() {
   });
 }
 
+function getWindowPreferencesPath() {
+  return app.getPath("userData");
+}
+
+function getSavedWindowAnchor() {
+  return windowAnchor.loadWindowAnchor(getWindowPreferencesPath());
+}
+
+function applySavedWindowAnchor() {
+  windowAnchor.applyWindowAnchor(mainWindow, getSavedWindowAnchor());
+}
+
+function setSavedWindowAnchor(anchor) {
+  const nextAnchor = windowAnchor.saveWindowAnchor(getWindowPreferencesPath(), anchor);
+  applySavedWindowAnchor();
+  return nextAnchor;
+}
+
+function getSavedGeneratorOptions() {
+  return windowAnchor.loadGeneratorOptions(getWindowPreferencesPath());
+}
+
+function setSavedGeneratorOptions(options) {
+  return windowAnchor.saveGeneratorOptions(getWindowPreferencesPath(), options);
+}
+
 function showMainWindow() {
   if (!mainWindow) {
     createMainWindow();
@@ -897,6 +1105,7 @@ function showMainWindow() {
     mainWindow.restore();
   }
 
+  applySavedWindowAnchor();
   mainWindow.setSkipTaskbar(false);
   mainWindow.show();
   mainWindow.focus();
@@ -924,7 +1133,8 @@ function createTray() {
     return;
   }
 
-  tray = new Tray(getAppIcon().resize({ width: 16, height: 16 }));
+  const trayIconSize = process.platform === "darwin" ? 18 : 16;
+  tray = new Tray(getAppIcon().resize({ width: trayIconSize, height: trayIconSize }));
   tray.setToolTip("Passworder");
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -956,6 +1166,7 @@ function enableAutoLaunch() {
 
 const registeredEntryShortcuts = new Set();
 let entryShortcutsSuspended = false;
+let registeredShowShortcut = "";
 
 function unregisterEntryShortcuts() {
   for (const accelerator of registeredEntryShortcuts) {
@@ -972,8 +1183,10 @@ function refreshEntryShortcuts() {
     return;
   }
 
+  const showShortcut = getSavedShowShortcut();
+
   for (const assignment of vaultService.getShortcutAssignments()) {
-    if (assignment.kind !== "keyboard") {
+    if (assignment.kind !== "keyboard" || assignment.accelerator === showShortcut) {
       continue;
     }
 
@@ -1009,6 +1222,143 @@ function setEntryShortcutsSuspended(suspended) {
   refreshEntryShortcuts();
 }
 
+function isFunctionKey(key) {
+  return /^F([1-9]|1[0-9]|2[0-4])$/.test(key);
+}
+
+function isSafeGlobalShortcut(shortcut) {
+  const parts = String(shortcut ?? "")
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return false;
+  }
+
+  const key = parts[parts.length - 1];
+  const hasModifier = parts
+    .slice(0, -1)
+    .some(
+      (part) =>
+        part === "Command" ||
+        part === "Control" ||
+        part === "Alt" ||
+        part === "Shift",
+    );
+
+  return hasModifier || isFunctionKey(key);
+}
+
+function normalizeShowShortcut(value) {
+  const normalized = vaultService.normalizeShortcutInput(value);
+  if (!normalized || vaultService.isMouseShortcut(normalized)) {
+    return "";
+  }
+
+  return normalized;
+}
+
+function getSavedShowShortcut() {
+  return normalizeShowShortcut(
+    windowAnchor.loadShowShortcut(getWindowPreferencesPath()),
+  );
+}
+
+function isShowShortcutUsedByEntry(shortcut) {
+  return vaultService
+    .getShortcutAssignments()
+    .some((assignment) => assignment.accelerator === shortcut);
+}
+
+function usesShowShortcut(input) {
+  const showShortcut = getSavedShowShortcut();
+  if (!showShortcut) {
+    return false;
+  }
+
+  const usernameShortcut = vaultService.normalizeShortcutInput(input?.usernameShortcut);
+  const passwordShortcut = vaultService.normalizeShortcutInput(input?.passwordShortcut);
+  return usernameShortcut === showShortcut || passwordShortcut === showShortcut;
+}
+
+function handleShowShortcut() {
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+    hideMainWindow();
+    return;
+  }
+
+  showMainWindow();
+}
+
+function unregisterShowShortcut() {
+  if (!registeredShowShortcut) {
+    return;
+  }
+
+  globalShortcut.unregister(registeredShowShortcut);
+  registeredShowShortcut = "";
+}
+
+function refreshShowShortcut() {
+  unregisterShowShortcut();
+
+  const shortcut = getSavedShowShortcut();
+  if (!shortcut) {
+    return true;
+  }
+
+  const registered = globalShortcut.register(shortcut, handleShowShortcut);
+  if (!registered) {
+    return false;
+  }
+
+  registeredShowShortcut = shortcut;
+  return true;
+}
+
+function setSavedShowShortcut(shortcut) {
+  const rawValue = typeof shortcut === "string" ? shortcut.trim() : "";
+
+  if (!rawValue) {
+    windowAnchor.saveShowShortcut(getWindowPreferencesPath(), "");
+    refreshShowShortcut();
+    return "";
+  }
+
+  const normalized = normalizeShowShortcut(rawValue);
+  if (!normalized) {
+    throw new Error("errors.shortcutInvalid");
+  }
+
+  if (!isSafeGlobalShortcut(normalized)) {
+    throw new Error("errors.showShortcutNeedsModifier");
+  }
+
+  if (isShowShortcutUsedByEntry(normalized)) {
+    throw new Error("errors.shortcutDuplicate");
+  }
+
+  const previousShortcut = registeredShowShortcut || getSavedShowShortcut();
+  unregisterShowShortcut();
+
+  const registered = globalShortcut.register(normalized, handleShowShortcut);
+  if (!registered) {
+    if (previousShortcut && previousShortcut !== normalized) {
+      const restored = globalShortcut.register(previousShortcut, handleShowShortcut);
+      if (restored) {
+        registeredShowShortcut = previousShortcut;
+      }
+    }
+
+    throw new Error("errors.showShortcutUnavailable");
+  }
+
+  registeredShowShortcut = normalized;
+  windowAnchor.saveShowShortcut(getWindowPreferencesPath(), normalized);
+  return normalized;
+}
+
 function registerIpcHandlers() {
   ipcMain.handle("vault:get-status", async () =>
     vaultService.getStatus(getVaultStoragePath()),
@@ -1031,6 +1381,10 @@ function registerIpcHandlers() {
     unregisterEntryShortcuts();
   });
   ipcMain.handle("vault:save-entry", async (_event, input) => {
+    if (usesShowShortcut(input)) {
+      throw new Error("errors.shortcutDuplicate");
+    }
+
     const payload = await vaultService.saveEntry(getVaultStoragePath(), input);
     refreshEntryShortcuts();
     return payload;
@@ -1144,6 +1498,20 @@ function registerIpcHandlers() {
   ipcMain.handle("window:open-external", async (_event, url) => {
     await shell.openExternal(url);
   });
+  ipcMain.handle("window:get-anchor", async () => getSavedWindowAnchor());
+  ipcMain.handle("window:set-anchor", async (_event, anchor) =>
+    setSavedWindowAnchor(anchor),
+  );
+  ipcMain.handle("window:get-show-shortcut", async () => getSavedShowShortcut());
+  ipcMain.handle("window:set-show-shortcut", async (_event, shortcut) =>
+    setSavedShowShortcut(shortcut),
+  );
+  ipcMain.on("app:get-generator-options-sync", (event) => {
+    event.returnValue = getSavedGeneratorOptions();
+  });
+  ipcMain.on("app:set-generator-options-sync", (event, options) => {
+    event.returnValue = setSavedGeneratorOptions(options);
+  });
 }
 
 app.whenReady().then(() => {
@@ -1152,6 +1520,10 @@ app.whenReady().then(() => {
   registerIpcHandlers();
   createMainWindow();
   createTray();
+  refreshShowShortcut();
+  screen.on("display-metrics-changed", applySavedWindowAnchor);
+  screen.on("display-added", applySavedWindowAnchor);
+  screen.on("display-removed", applySavedWindowAnchor);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -1183,4 +1555,5 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   isQuitting = true;
   unregisterEntryShortcuts();
+  unregisterShowShortcut();
 });

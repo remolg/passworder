@@ -124,6 +124,8 @@ const EN_TRANSLATIONS = {
   "fields.shortcutPlaceholder": "Press a key or mouse button",
   "fields.shortcutHint":
     "Esc, Enter, Tab, Space, Backspace, Delete, and Windows keys cannot be assigned. Mouse shortcuts work while the app is focused.",
+  "fields.shortcutHintMac":
+    "Esc, Enter, Tab, Space, Backspace, and Delete cannot be assigned. Command, Control, Option, and Shift can be used. Mouse shortcuts work while the app is focused.",
   "fields.clearShortcut": "Clear shortcut",
   "fields.mouseMiddle": "Middle click",
   "fields.mouseBack": "Mouse back",
@@ -189,6 +191,17 @@ const EN_TRANSLATIONS = {
     "Remove copied data from the clipboard automatically.",
   "settings.languageLabel": "Language",
   "settings.languageDescription": "Choose the display language for the app.",
+  "settings.windowPositionLabel": "Window Position",
+  "settings.windowAnchorTopLeft": "Top left",
+  "settings.windowAnchorTopRight": "Top right",
+  "settings.windowAnchorBottomLeft": "Bottom left",
+  "settings.windowAnchorBottomRight": "Bottom right",
+  "settings.showShortcutLabel": "Open App Shortcut",
+  "settings.showShortcutPlaceholder": "Press a key combination",
+  "settings.showShortcutHint":
+    "Press once to open, again to hide. Use Ctrl, Alt, Shift, or an F key.",
+  "settings.showShortcutHintMac":
+    "Press once to open, again to hide. Use Cmd, Ctrl, Option, Shift, or an F key.",
   "settings.transferLabel": "Import / Export",
   "settings.exportEntries": "Export Passwords",
   "settings.exportEntriesHint": "Create an encrypted JSON backup of your current vault.",
@@ -228,7 +241,7 @@ const EN_TRANSLATIONS = {
   "errors.updateInstallerMissing": "Downloaded update package was not found.",
   "errors.updateInstallerLaunchFailed": "Update could not be applied.",
   "errors.updateInstallUnavailable":
-    "In-app update can only run in the packaged Windows app.",
+    "In-app update can only run in the packaged Windows or macOS app.",
   "errors.updatePackageInvalid": "Downloaded update package is invalid.",
   "errors.importFileInvalid":
     "The selected file is not a valid Passworder export.",
@@ -249,6 +262,12 @@ const EN_TRANSLATIONS = {
   "errors.shortcutDuplicate":
     "This shortcut is already in use.",
   "errors.shortcutReserved": "This key cannot be assigned.",
+  "errors.showShortcutNeedsModifier":
+    "Use Ctrl, Alt, Shift, or a function key for the open shortcut.",
+  "errors.showShortcutNeedsModifierMac":
+    "Use Cmd, Ctrl, Option, Shift, or a function key for the open shortcut.",
+  "errors.showShortcutUnavailable":
+    "This shortcut is already used by the system or another app.",
   "errors.vaultAlreadyExists": "Vault already exists.",
   "errors.masterPasswordInvalid": "Master password could not be verified.",
   "errors.entryNotFoundUpdate": "Entry to update was not found.",
@@ -402,6 +421,8 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "fields.shortcutPlaceholder": "Tuşa veya mouse tuşuna basın",
   "fields.shortcutHint":
     "Esc, Enter, Tab, Space, Backspace, Delete ve Windows tuşları atanamaz. Mouse kısayolları uygulama odaktayken çalışır.",
+  "fields.shortcutHintMac":
+    "Esc, Enter, Tab, Space, Backspace ve Delete atanamaz. Command, Control, Option ve Shift kullanılabilir. Mouse kısayolları uygulama odaktayken çalışır.",
   "fields.clearShortcut": "Kısayolu temizle",
   "fields.mouseMiddle": "Orta tık",
   "fields.mouseBack": "Yan tuş geri",
@@ -467,6 +488,17 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Kopyalanan veriler panodan otomatik olarak silinsin.",
   "settings.languageLabel": "Dil",
   "settings.languageDescription": "Uygulamanın görüntüleme dilini seçin.",
+  "settings.windowPositionLabel": "Pencere Konumu",
+  "settings.windowAnchorTopLeft": "Sol üst",
+  "settings.windowAnchorTopRight": "Sağ üst",
+  "settings.windowAnchorBottomLeft": "Sol alt",
+  "settings.windowAnchorBottomRight": "Sağ alt",
+  "settings.showShortcutLabel": "Uygulamayı Açma Kısayolu",
+  "settings.showShortcutPlaceholder": "Tuş kombinasyonuna basın",
+  "settings.showShortcutHint":
+    "Bir kez basınca açılır, tekrar basınca gizlenir. Ctrl, Alt, Shift veya bir F tuşu kullanın.",
+  "settings.showShortcutHintMac":
+    "Bir kez basınca açılır, tekrar basınca gizlenir. Cmd, Ctrl, Option, Shift veya bir F tuşu kullanın.",
   "settings.transferLabel": "İçe / Dışa Aktar",
   "settings.exportEntries": "Şifreleri Dışa Aktar",
   "settings.exportEntriesHint": "Mevcut kasanın şifreli JSON yedeğini oluşturun.",
@@ -506,7 +538,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "errors.updateInstallerMissing": "İndirilen güncelleme paketi bulunamadı.",
   "errors.updateInstallerLaunchFailed": "Güncelleme uygulanamadı.",
   "errors.updateInstallUnavailable":
-    "Uygulama içi güncelleme yalnızca paketlenmiş Windows uygulamasında çalışır.",
+    "Uygulama içi güncelleme yalnızca paketlenmiş Windows veya macOS uygulamasında çalışır.",
   "errors.updatePackageInvalid": "İndirilen güncelleme paketi geçersiz.",
   "errors.importFileInvalid":
     "Seçilen dosya geçerli bir Passworder aktarım dosyası değil.",
@@ -527,6 +559,12 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "errors.shortcutDuplicate":
     "Bu kısayol zaten kullanımda.",
   "errors.shortcutReserved": "Bu tuş atanamaz.",
+  "errors.showShortcutNeedsModifier":
+    "Açma kısayolu için Ctrl, Alt, Shift veya bir F tuşu kullanın.",
+  "errors.showShortcutNeedsModifierMac":
+    "Açma kısayolu için Cmd, Ctrl, Option, Shift veya bir F tuşu kullanın.",
+  "errors.showShortcutUnavailable":
+    "Bu kısayol sistem veya başka bir uygulama tarafından kullanılıyor.",
   "errors.vaultAlreadyExists": "Kasa zaten mevcut.",
   "errors.masterPasswordInvalid": "Master password doğrulanamadı.",
   "errors.entryNotFoundUpdate": "Güncellenecek kayıt bulunamadı.",

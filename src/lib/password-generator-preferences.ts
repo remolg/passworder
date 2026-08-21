@@ -16,6 +16,89 @@ const DEFAULT_GENERATOR_OPTIONS: PasswordGeneratorOptions = {
 };
 
 export function getStoredGeneratorLength() {
+  return getStoredGeneratorOptions().length;
+}
+
+export function getStoredGeneratorOptions(): PasswordGeneratorOptions {
+  const desktopOptions = readDesktopGeneratorOptions();
+  if (desktopOptions) {
+    return desktopOptions;
+  }
+
+  if (typeof window === "undefined") {
+    return { ...DEFAULT_GENERATOR_OPTIONS };
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(GENERATOR_OPTIONS_STORAGE_KEY);
+    const nextOptions = rawValue
+      ? normalizeGeneratorOptions(JSON.parse(rawValue))
+      : {
+          ...DEFAULT_GENERATOR_OPTIONS,
+          length: readStoredLength(),
+        };
+
+    writeDesktopGeneratorOptions(nextOptions);
+    return nextOptions;
+  } catch {
+    return {
+      ...DEFAULT_GENERATOR_OPTIONS,
+      length: readStoredLength(),
+    };
+  }
+}
+
+export function persistGeneratorLength(length: number) {
+  persistGeneratorOptions({
+    ...getStoredGeneratorOptions(),
+    length,
+  });
+}
+
+export function persistGeneratorOptions(options: PasswordGeneratorOptions) {
+  const normalizedOptions = normalizeGeneratorOptions(options);
+  writeDesktopGeneratorOptions(normalizedOptions);
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      GENERATOR_OPTIONS_STORAGE_KEY,
+      JSON.stringify(normalizedOptions),
+    );
+    window.localStorage.setItem(
+      GENERATOR_LENGTH_STORAGE_KEY,
+      String(normalizedOptions.length),
+    );
+  } catch {}
+}
+
+export function getDefaultGeneratorOptions(): PasswordGeneratorOptions {
+  return getStoredGeneratorOptions();
+}
+
+function readDesktopGeneratorOptions() {
+  try {
+    const options = window.passworder?.getGeneratorOptions?.();
+    if (!options || typeof options !== "object") {
+      return null;
+    }
+
+    return normalizeGeneratorOptions(options);
+  } catch {
+    return null;
+  }
+}
+
+function writeDesktopGeneratorOptions(options: PasswordGeneratorOptions) {
+  try {
+    window.passworder?.setGeneratorOptions?.(options);
+  } catch {}
+}
+
+function readStoredLength() {
   if (typeof window === "undefined") {
     return DEFAULT_GENERATOR_LENGTH;
   }
@@ -34,68 +117,9 @@ export function getStoredGeneratorLength() {
   }
 }
 
-export function getStoredGeneratorOptions(): PasswordGeneratorOptions {
-  if (typeof window === "undefined") {
-    return DEFAULT_GENERATOR_OPTIONS;
-  }
-
-  try {
-    const rawValue = window.localStorage.getItem(GENERATOR_OPTIONS_STORAGE_KEY);
-    if (!rawValue) {
-      return {
-        ...DEFAULT_GENERATOR_OPTIONS,
-        length: getStoredGeneratorLength(),
-      };
-    }
-
-    return normalizeGeneratorOptions(JSON.parse(rawValue));
-  } catch {
-    return {
-      ...DEFAULT_GENERATOR_OPTIONS,
-      length: getStoredGeneratorLength(),
-    };
-  }
-}
-
-export function persistGeneratorLength(length: number) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      GENERATOR_LENGTH_STORAGE_KEY,
-      String(clampGeneratorLength(length)),
-    );
-  } catch {}
-}
-
-export function persistGeneratorOptions(options: PasswordGeneratorOptions) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const normalizedOptions = normalizeGeneratorOptions(options);
-
-  try {
-    window.localStorage.setItem(
-      GENERATOR_OPTIONS_STORAGE_KEY,
-      JSON.stringify(normalizedOptions),
-    );
-    window.localStorage.setItem(
-      GENERATOR_LENGTH_STORAGE_KEY,
-      String(normalizedOptions.length),
-    );
-  } catch {}
-}
-
-export function getDefaultGeneratorOptions(): PasswordGeneratorOptions {
-  return getStoredGeneratorOptions();
-}
-
 function normalizeGeneratorOptions(value: unknown): PasswordGeneratorOptions {
   if (!value || typeof value !== "object") {
-    return DEFAULT_GENERATOR_OPTIONS;
+    return { ...DEFAULT_GENERATOR_OPTIONS };
   }
 
   const input = value as Partial<PasswordGeneratorOptions>;
@@ -103,7 +127,7 @@ function normalizeGeneratorOptions(value: unknown): PasswordGeneratorOptions {
     length:
       typeof input.length === "number"
         ? clampGeneratorLength(input.length)
-        : getStoredGeneratorLength(),
+        : DEFAULT_GENERATOR_LENGTH,
     uppercase: typeof input.uppercase === "boolean" ? input.uppercase : true,
     lowercase: typeof input.lowercase === "boolean" ? input.lowercase : true,
     numbers: typeof input.numbers === "boolean" ? input.numbers : true,

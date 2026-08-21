@@ -17,8 +17,12 @@ const EXPORT_TYPE = "passworder.entries.export";
 const EXPORT_VERSION = 2;
 const EXPORT_LEGACY_VERSION = 1;
 const MIN_MASTER_PASSWORD_LENGTH = 3;
-const SHORTCUT_MODIFIER_ORDER = ["Control", "Alt", "Shift"];
+const SHORTCUT_MODIFIER_ORDER = ["Command", "Control", "Alt", "Shift"];
 const SHORTCUT_MODIFIER_ALIASES = new Map([
+  ["cmd", "Command"],
+  ["command", "Command"],
+  ["meta", "Command"],
+  ["super", "Command"],
   ["ctrl", "Control"],
   ["control", "Control"],
   ["alt", "Alt"],
@@ -1231,4 +1235,6 @@ module.exports = {
   copyToClipboard,
   copyEntrySecret,
   getShortcutAssignments,
+  isMouseShortcut,
+  normalizeShortcutInput,
 };

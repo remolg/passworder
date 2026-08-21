@@ -82,4 +82,11 @@ contextBridge.exposeInMainWorld("passworder", {
   minimizeWindow: () => ipcRenderer.invoke("window:minimize"),
   closeWindow: () => ipcRenderer.invoke("window:close"),
   openExternalUrl: (url) => ipcRenderer.invoke("window:open-external", url),
+  getWindowAnchor: () => ipcRenderer.invoke("window:get-anchor"),
+  setWindowAnchor: (anchor) => ipcRenderer.invoke("window:set-anchor", anchor),
+  getShowShortcut: () => ipcRenderer.invoke("window:get-show-shortcut"),
+  setShowShortcut: (shortcut) => ipcRenderer.invoke("window:set-show-shortcut", shortcut),
+  getGeneratorOptions: () => ipcRenderer.sendSync("app:get-generator-options-sync"),
+  setGeneratorOptions: (options) =>
+    ipcRenderer.sendSync("app:set-generator-options-sync", options),
 });

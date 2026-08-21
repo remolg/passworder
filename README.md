@@ -6,10 +6,12 @@ Passworder, gizlilik ve yerel veri güvenliği odağında geliştirilmiş bir ma
 
 ## Kullanım
 
-Windows kullanıcıları uygulamayı GitHub Releases bölümünden indirebilir.
+Windows ve macOS kullanıcıları uygulamayı GitHub Releases bölümünden indirebilir.
 
-- Kurulumlu sürüm için `Passworder-Setup` dosyasını çalıştırın.
-- Taşınabilir sürüm için `Passworder-Portable` arşivini çıkarın ve `Passworder.exe` dosyasını açın.
+- Windows kurulumlu sürüm için `Passworder-Setup` dosyasını çalıştırın.
+- Windows taşınabilir sürüm için `Passworder-Portable` arşivini çıkarın ve `Passworder.exe` dosyasını açın.
+- macOS için `Passworder-*-mac-arm64.dmg` (Apple Silicon) veya `Passworder-*-mac-x64.dmg` (Intel) dosyasını açın.
+- macOS Gatekeeper uyarısı çıkarsa uygulamaya sağ tıklayıp **Aç** deyin.
 - Uygulama tamamen yerel çalışır; hesap oluşturma veya internet bağlantısı gerekmez.
 - Ana şifre unutulursa kasa içeriği geri alınamaz. Bu bilgi güvenlik nedeniyle hiçbir yerde saklanmaz.
 
@@ -69,6 +71,12 @@ Windows paketi oluşturmak için:
 
 ```bash
 npm run package:win
+```
+
+macOS paketi oluşturmak için (Mac bilgisayarda):
+
+```bash
+npm run package:mac
 ```
 
 ## Güvenlik Notları

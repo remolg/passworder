@@ -6,12 +6,15 @@ import {
   Download,
   Globe,
   HardDrive,
+  Keyboard,
   LockKeyhole,
+  Pin,
   ShieldCheck,
   TimerReset,
   Upload,
 } from "lucide-react";
 
+import { ShortcutCaptureInput } from "@/components/shortcut-capture-input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,9 +26,38 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { appWindow } from "@/lib/desktop";
 import { type TranslationKey, isTranslationKey, useI18n } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, isMacRuntime } from "@/lib/utils";
+import { WindowAnchor } from "@/types/desktop";
 import { VaultSettings } from "@/types/vault";
+
+const WINDOW_ANCHOR_OPTIONS: Array<{
+  value: WindowAnchor;
+  labelKey: TranslationKey;
+  className: string;
+}> = [
+  {
+    value: "top-left",
+    labelKey: "settings.windowAnchorTopLeft",
+    className: "top-2 left-2",
+  },
+  {
+    value: "top-right",
+    labelKey: "settings.windowAnchorTopRight",
+    className: "top-2 right-2",
+  },
+  {
+    value: "bottom-left",
+    labelKey: "settings.windowAnchorBottomLeft",
+    className: "bottom-2 left-2",
+  },
+  {
+    value: "bottom-right",
+    labelKey: "settings.windowAnchorBottomRight",
+    className: "bottom-2 right-2",
+  },
+];
 
 const MIN_MASTER_PASSWORD_LENGTH = 3;
 
@@ -33,6 +65,7 @@ interface VaultSettingsCardProps {
   busy?: boolean;
   settings: VaultSettings;
   storagePath?: string;
+  usedShortcuts?: string[];
   onExport?: (password: string) => void | Promise<unknown>;
   onImport?: (password?: string) => void | Promise<unknown>;
   onChangeMasterPassword?: (
@@ -40,19 +73,29 @@ interface VaultSettingsCardProps {
     nextPassword: string,
   ) => Promise<boolean> | boolean;
   onChange: (settings: VaultSettings) => void;
+  onShowShortcutChange?: (shortcut: string) => void;
+  onShortcutSuspendChange?: (suspended: boolean) => void;
 }
 
 export function VaultSettingsCard({
   busy,
   settings,
   storagePath,
+  usedShortcuts = [],
   onExport,
   onImport,
   onChangeMasterPassword,
   onChange,
+  onShowShortcutChange,
+  onShortcutSuspendChange,
 }: VaultSettingsCardProps) {
   const { language, t } = useI18n();
   const compactTitle = language === "tr" ? "Ayarlar" : "Settings";
+  const [windowAnchor, setWindowAnchor] = useState<WindowAnchor>("bottom-right");
+  const [showShortcut, setShowShortcut] = useState("");
+  const [showShortcutError, setShowShortcutError] = useState<TranslationKey | null>(
+    null,
+  );
   const [currentPassword, setCurrentPassword] = useState("");
   const [nextPassword, setNextPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -87,6 +130,74 @@ export function VaultSettingsCard({
     ],
     [t],
   );
+  const canPinWindow = appWindow.supportsAnchor();
+  const canAssignShowShortcut = appWindow.supportsShowShortcut();
+
+  useEffect(() => {
+    if (!canPinWindow) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void appWindow.getAnchor().then((anchor) => {
+      if (!cancelled) {
+        setWindowAnchor(anchor);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canPinWindow]);
+
+  useEffect(() => {
+    if (!canAssignShowShortcut) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void appWindow.getShowShortcut().then((shortcut) => {
+      if (!cancelled) {
+        setShowShortcut(shortcut);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canAssignShowShortcut]);
+
+  async function handleWindowAnchorChange(anchor: WindowAnchor) {
+    setWindowAnchor(anchor);
+    await appWindow.setAnchor(anchor);
+  }
+
+  async function handleShowShortcutChange(shortcut: string) {
+    setShowShortcutError(null);
+
+    if (shortcut && usedShortcuts.includes(shortcut)) {
+      setShowShortcutError("errors.shortcutDuplicate");
+      return;
+    }
+
+    try {
+      const nextShortcut = await appWindow.setShowShortcut(shortcut);
+      setShowShortcut(nextShortcut);
+      onShowShortcutChange?.(nextShortcut);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const errorKey = message.match(/(?:errors|notice)\.[A-Za-z0-9]+/)?.[0];
+      const resolvedKey =
+        errorKey === "errors.showShortcutNeedsModifier" && isMacRuntime()
+          ? "errors.showShortcutNeedsModifierMac"
+          : errorKey;
+      setShowShortcutError(
+        resolvedKey && isTranslationKey(resolvedKey) ? resolvedKey : "errors.unexpected",
+      );
+    }
+  }
 
   async function handleMasterPasswordSubmit() {
     setPasswordError(null);
@@ -242,6 +353,57 @@ export function VaultSettingsCard({
               }
             />
           </SettingRow>
+
+          {canPinWindow ? (
+            <SettingRow
+              icon={<Pin className="h-4 w-4" />}
+              label={t("settings.windowPositionLabel")}
+            >
+              <WindowAnchorPicker
+                value={windowAnchor}
+                onChange={(value) => {
+                  void handleWindowAnchorChange(value);
+                }}
+              />
+            </SettingRow>
+          ) : null}
+
+          {canAssignShowShortcut ? (
+            <SettingRow
+              icon={<Keyboard className="h-4 w-4" />}
+              label={t("settings.showShortcutLabel")}
+            >
+              <div className="space-y-3">
+                <ShortcutCaptureInput
+                  id="settings-show-shortcut"
+                  allowMouse={false}
+                  value={showShortcut}
+                  onChange={(value) => {
+                    void handleShowShortcutChange(value);
+                  }}
+                  onRejected={(messageKey) => {
+                    if (isTranslationKey(messageKey)) {
+                      setShowShortcutError(messageKey);
+                    }
+                  }}
+                  onFocus={() => onShortcutSuspendChange?.(true)}
+                  onBlur={() => onShortcutSuspendChange?.(false)}
+                  placeholder={t("settings.showShortcutPlaceholder")}
+                  clearLabel={t("fields.clearShortcut")}
+                />
+                <p className="text-[11px] leading-5 text-muted-foreground">
+                  {t(
+                    isMacRuntime()
+                      ? "settings.showShortcutHintMac"
+                      : "settings.showShortcutHint",
+                  )}
+                </p>
+                {showShortcutError ? (
+                  <p className="text-[12px] text-destructive">{t(showShortcutError)}</p>
+                ) : null}
+              </div>
+            </SettingRow>
+          ) : null}
         </div>
 
         <div className="mt-6 h-px bg-white/[0.05]" />
@@ -560,6 +722,56 @@ function TransferActionCard({
 
       <p className="text-[14px] font-medium text-foreground">{title}</p>
     </button>
+  );
+}
+
+function WindowAnchorPicker({
+  value,
+  onChange,
+}: {
+  value: WindowAnchor;
+  onChange: (value: WindowAnchor) => void;
+}) {
+  const { t } = useI18n();
+  const selectedLabelKey =
+    WINDOW_ANCHOR_OPTIONS.find((option) => option.value === value)?.labelKey ??
+    "settings.windowAnchorBottomRight";
+
+  return (
+    <div className="flex items-center gap-4">
+      <div
+        className="relative h-[92px] w-[140px] shrink-0 rounded-[14px] border border-white/[0.08] bg-white/[0.03] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]"
+        role="radiogroup"
+        aria-label={t("settings.windowPositionLabel")}
+      >
+        {WINDOW_ANCHOR_OPTIONS.map((option) => {
+          const active = option.value === value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={t(option.labelKey)}
+              title={t(option.labelKey)}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                "absolute h-6 w-6 rounded-[8px] transition-colors",
+                option.className,
+                active
+                  ? "bg-primary shadow-[0_0_0_3px_rgba(99,102,241,0.28)]"
+                  : "bg-white/[0.08] hover:bg-white/[0.16]",
+              )}
+            />
+          );
+        })}
+      </div>
+
+      <p className="text-[13px] font-medium text-foreground/88">
+        {t(selectedLabelKey)}
+      </p>
+    </div>
   );
 }
 

@@ -136,6 +136,7 @@ function AppContent({
     useState<EntryCopyFeedback | null>(null);
   const [externalCopyNotice, setExternalCopyNotice] = useState<string | null>(null);
   const [nestedShortcutsSuspended, setNestedShortcutsSuspended] = useState(false);
+  const [appShowShortcut, setAppShowShortcut] = useState("");
   const [localStatus, setLocalStatus] = useState<{
     key: string;
     tone: "notice" | "error";
@@ -229,6 +230,24 @@ function AppContent({
     (activeSection === "quick-add" ||
       Boolean(selectedEntry) ||
       nestedShortcutsSuspended);
+
+  useEffect(() => {
+    if (!appWindow.supportsShowShortcut()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void appWindow.getShowShortcut().then((shortcut) => {
+      if (!cancelled) {
+        setAppShowShortcut(shortcut);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     shortcutsSuspendedRef.current = shortcutsSuspended;
@@ -388,6 +407,10 @@ function AppContent({
     shortcut: string,
     field: ShortcutFormField,
   ) {
+    if (shortcut && shortcut === appShowShortcut) {
+      return false;
+    }
+
     return !controller.payload?.entries.some((entry) => {
       const sameUsernameShortcut = field === "usernameShortcut" && entry.id === entryId;
       const samePasswordShortcut = field === "passwordShortcut" && entry.id === entryId;
@@ -823,10 +846,15 @@ function AppContent({
                   busy={controller.busy}
                   settings={controller.payload.settings}
                   storagePath={controller.status.storagePath}
+                  usedShortcuts={controller.payload.entries.flatMap((entry) =>
+                    [entry.usernameShortcut, entry.passwordShortcut].filter(Boolean),
+                  )}
                   onExport={controller.exportEntries}
                   onImport={controller.importEntries}
                   onChange={handleSettingsChange}
                   onChangeMasterPassword={handleMasterPasswordChange}
+                  onShowShortcutChange={setAppShowShortcut}
+                  onShortcutSuspendChange={setNestedShortcutsSuspended}
                 />
               ) : null}
             </div>

@@ -1,11 +1,4 @@
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -15,17 +8,17 @@ import {
   Folder,
   Keyboard,
   WandSparkles,
-  X,
 } from "lucide-react";
 
 import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 import { ServiceLogoBadge } from "@/components/service-logo-badge";
+import { ShortcutCaptureInput } from "@/components/shortcut-capture-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { getLogoOption, LOGO_OPTIONS } from "@/lib/logo-catalog";
-import { cn } from "@/lib/utils";
+import { cn, isMacRuntime } from "@/lib/utils";
 import { EntryFormValues, ShortcutFormField, VaultFolder } from "@/types/vault";
 
 interface EntryFormFieldsProps {
@@ -475,7 +468,7 @@ export function EntryFormFields({
           </FieldGroup>
 
           <p className="text-[11px] leading-5 text-muted-foreground">
-            {t("fields.shortcutHint")}
+            {t(isMacRuntime() ? "fields.shortcutHintMac" : "fields.shortcutHint")}
           </p>
         </div>
       </div>
@@ -501,116 +494,6 @@ function FieldGroup({
         {label}
       </Label>
       {children}
-    </div>
-  );
-}
-
-function ShortcutCaptureInput({
-  clearLabel,
-  id,
-  labels,
-  onChange,
-  onRejected,
-  placeholder,
-  value,
-}: {
-  clearLabel: string;
-  id: string;
-  labels: {
-    mouseBack: string;
-    mouseForward: string;
-    mouseMiddle: string;
-  };
-  onChange: (value: string) => void;
-  onRejected: (messageKey: string) => void;
-  placeholder: string;
-  value: string;
-}) {
-  const [pendingModifiers, setPendingModifiers] = useState<string[]>([]);
-  const displayValue = value
-    ? formatShortcutForDisplay(value, labels)
-    : formatPendingShortcut(pendingModifiers);
-
-  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (
-      (event.key === "Backspace" || event.key === "Delete") &&
-      !event.ctrlKey &&
-      !event.altKey &&
-      !event.shiftKey
-    ) {
-      onChange("");
-      return;
-    }
-
-    const nextPendingModifiers = keyboardEventToModifiers(event);
-    if (isModifierKey(event.key)) {
-      setPendingModifiers(nextPendingModifiers);
-      return;
-    }
-
-    const shortcut = keyboardEventToShortcut(event);
-    if (shortcut) {
-      setPendingModifiers([]);
-      onChange(shortcut);
-      return;
-    }
-
-    setPendingModifiers([]);
-    onRejected("errors.shortcutReserved");
-  }
-
-  function handleKeyUp(event: ReactKeyboardEvent<HTMLInputElement>) {
-    if (!isModifierKey(event.key)) {
-      return;
-    }
-
-    const nextModifiers = keyboardEventToModifiers(event).filter(
-      (modifier) => modifier !== normalizeModifierKey(event.key),
-    );
-    setPendingModifiers(nextModifiers);
-  }
-
-  function handleMouseDown(event: ReactMouseEvent<HTMLInputElement>) {
-    const shortcut = mouseButtonToShortcut(event.button);
-    if (!shortcut) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    setPendingModifiers([]);
-    onChange(shortcut);
-  }
-
-  return (
-    <div className="relative">
-      <Keyboard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        id={id}
-        value={displayValue}
-        onKeyDown={handleKeyDown}
-        onKeyUp={handleKeyUp}
-        onMouseDown={handleMouseDown}
-        onBlur={() => setPendingModifiers([])}
-        onPaste={(event) => event.preventDefault()}
-        placeholder={placeholder}
-        readOnly
-        className={cn("pl-9", value ? "pr-10" : "pr-3")}
-      />
-      {value ? (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
-          aria-label={clearLabel}
-          title={clearLabel}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -642,171 +525,6 @@ function InlineActionButton({
       {children}
     </button>
   );
-}
-
-function keyboardEventToShortcut(event: ReactKeyboardEvent<HTMLInputElement>) {
-  if (event.metaKey) {
-    return "";
-  }
-
-  const key = normalizeKeyboardKey(event.key, event.code);
-  if (!key || isReservedShortcutKey(key)) {
-    return "";
-  }
-
-  const modifiers = [];
-  modifiers.push(...keyboardEventToModifiers(event));
-
-  return [...modifiers, key].join("+");
-}
-
-function keyboardEventToModifiers(event: ReactKeyboardEvent<HTMLInputElement>) {
-  const modifiers = [];
-
-  if (event.ctrlKey) {
-    modifiers.push("Control");
-  }
-
-  if (event.altKey) {
-    modifiers.push("Alt");
-  }
-
-  if (event.shiftKey) {
-    modifiers.push("Shift");
-  }
-
-  return modifiers;
-}
-
-function isModifierKey(key: string) {
-  return key === "Control" || key === "Alt" || key === "Shift";
-}
-
-function normalizeModifierKey(key: string) {
-  return isModifierKey(key) ? key : "";
-}
-
-function normalizeKeyboardKey(key: string, code: string) {
-  if (key === "Control" || key === "Alt" || key === "Shift" || key === "Meta") {
-    return "";
-  }
-
-  const functionKey = code.match(/^F([1-9]|1\d|2[0-4])$/)?.[0];
-  if (functionKey) {
-    return functionKey;
-  }
-
-  if (/^Numpad\d$/.test(code)) {
-    return code.replace("Numpad", "");
-  }
-
-  if (/^[a-z]$/i.test(key)) {
-    return key.toUpperCase();
-  }
-
-  if (/^\d$/.test(key)) {
-    return key;
-  }
-
-  const namedKeys: Record<string, string> = {
-    ArrowDown: "Down",
-    ArrowLeft: "Left",
-    ArrowRight: "Right",
-    ArrowUp: "Up",
-    Backspace: "Backspace",
-    Delete: "Delete",
-    End: "End",
-    Enter: "Enter",
-    Escape: "Escape",
-    Home: "Home",
-    Insert: "Insert",
-    PageDown: "PageDown",
-    PageUp: "PageUp",
-    CapsLock: "Capslock",
-    NumLock: "Numlock",
-    ScrollLock: "Scrolllock",
-    PrintScreen: "PrintScreen",
-    " ": "Space",
-  };
-
-  if (namedKeys[key]) {
-    return namedKeys[key];
-  }
-
-  const codeKeys: Record<string, string> = {
-    Backquote: "Backquote",
-    Backslash: "Backslash",
-    BracketLeft: "BracketLeft",
-    BracketRight: "BracketRight",
-    Comma: "Comma",
-    Equal: "Equal",
-    Minus: "Minus",
-    Period: "Period",
-    Quote: "Quote",
-    Semicolon: "Semicolon",
-    Slash: "Slash",
-  };
-
-  return codeKeys[code] ?? "";
-}
-
-function isReservedShortcutKey(key: string) {
-  return (
-    key === "Escape" ||
-    key === "Enter" ||
-    key === "Tab" ||
-    key === "Space" ||
-    key === "Backspace" ||
-    key === "Delete"
-  );
-}
-
-function mouseButtonToShortcut(button: number) {
-  if (button === 1) {
-    return "MouseMiddle";
-  }
-
-  if (button === 3) {
-    return "MouseBack";
-  }
-
-  if (button === 4) {
-    return "MouseForward";
-  }
-
-  return "";
-}
-
-function formatPendingShortcut(modifiers: string[]) {
-  if (modifiers.length === 0) {
-    return "";
-  }
-
-  return `${formatShortcutKeys(modifiers)} +`;
-}
-
-function formatShortcutForDisplay(
-  value: string,
-  labels: {
-    mouseBack: string;
-    mouseForward: string;
-    mouseMiddle: string;
-  },
-) {
-  const mouseLabels: Record<string, string> = {
-    MouseBack: labels.mouseBack,
-    MouseForward: labels.mouseForward,
-    MouseMiddle: labels.mouseMiddle,
-  };
-
-  return mouseLabels[value] ?? formatShortcutKeys(value.split("+"));
-}
-
-function formatShortcutKeys(keys: string[]) {
-  return keys
-    .map((key) => (key === "Control" ? "Ctrl" : key))
-    .filter(Boolean)
-    .join("+");
 }
 
 function LogoPickerButton({

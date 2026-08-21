@@ -7,6 +7,7 @@ import {
   MasterPasswordChangeInput,
   CopyableEntryField,
   VaultPayload,
+  PasswordGeneratorOptions,
   VaultSettings,
 } from "@/types/vault";
 
@@ -33,6 +34,12 @@ export interface UpdateDownloadState {
   downloadName?: string;
   error?: string;
 }
+
+export type WindowAnchor =
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
 
 export interface EntrySecretCopiedEvent {
   entryId: string;
@@ -72,6 +79,12 @@ export interface DesktopVaultApi {
   minimizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
   openExternalUrl: (url: string) => Promise<void>;
+  getWindowAnchor?: () => Promise<WindowAnchor>;
+  setWindowAnchor?: (anchor: WindowAnchor) => Promise<WindowAnchor>;
+  getShowShortcut?: () => Promise<string>;
+  setShowShortcut?: (shortcut: string) => Promise<string>;
+  getGeneratorOptions?: () => PasswordGeneratorOptions | null;
+  setGeneratorOptions?: (options: PasswordGeneratorOptions) => PasswordGeneratorOptions;
 }
 
 declare global {
