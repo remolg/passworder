@@ -4,6 +4,10 @@ let entrySecretCopiedSubscriptionId = 0;
 const entrySecretCopiedSubscriptions = new Map();
 let updateDownloadSubscriptionId = 0;
 const updateDownloadSubscriptions = new Map();
+let windowLockSubscriptionId = 0;
+const windowLockSubscriptions = new Map();
+let windowAnchorSubscriptionId = 0;
+const windowAnchorSubscriptions = new Map();
 
 contextBridge.exposeInMainWorld("passworder", {
   getStatus: () => ipcRenderer.invoke("vault:get-status"),
@@ -15,8 +19,11 @@ contextBridge.exposeInMainWorld("passworder", {
   createFolder: (input) => ipcRenderer.invoke("vault:create-folder", input),
   updateFolder: (input) => ipcRenderer.invoke("vault:update-folder", input),
   deleteFolder: (id) => ipcRenderer.invoke("vault:delete-folder", id),
-  exportEntries: (password) => ipcRenderer.invoke("vault:export-entries", password),
-  importEntries: (password) => ipcRenderer.invoke("vault:import-entries", password),
+  exportEntries: (password, masterPassword) =>
+    ipcRenderer.invoke("vault:export-entries", password, masterPassword),
+  importEntries: (password, masterPassword) =>
+    ipcRenderer.invoke("vault:import-entries", password, masterPassword),
+  revealStorage: () => ipcRenderer.invoke("vault:reveal-storage"),
   reorderEntries: (entryIds) => ipcRenderer.invoke("vault:reorder-entries", entryIds),
   reorderFolders: (folderIds) => ipcRenderer.invoke("vault:reorder-folders", folderIds),
   deleteEntry: (id) => ipcRenderer.invoke("vault:delete-entry", id),
@@ -84,8 +91,60 @@ contextBridge.exposeInMainWorld("passworder", {
   openExternalUrl: (url) => ipcRenderer.invoke("window:open-external", url),
   getWindowAnchor: () => ipcRenderer.invoke("window:get-anchor"),
   setWindowAnchor: (anchor) => ipcRenderer.invoke("window:set-anchor", anchor),
+  onWindowAnchorChanged: (callback) => {
+    if (typeof callback !== "function") {
+      return null;
+    }
+
+    const subscriptionId = ++windowAnchorSubscriptionId;
+    const listener = (_event, anchor) => {
+      callback(anchor ?? null);
+    };
+
+    windowAnchorSubscriptions.set(subscriptionId, listener);
+    ipcRenderer.on("window:anchor-changed", listener);
+    return subscriptionId;
+  },
+  offWindowAnchorChanged: (subscriptionId) => {
+    const listener = windowAnchorSubscriptions.get(subscriptionId);
+    if (!listener) {
+      return;
+    }
+
+    ipcRenderer.removeListener("window:anchor-changed", listener);
+    windowAnchorSubscriptions.delete(subscriptionId);
+  },
+  getWindowLocked: () => ipcRenderer.invoke("window:get-locked"),
+  setWindowLocked: (locked) => ipcRenderer.invoke("window:set-locked", locked),
+  onWindowLockChanged: (callback) => {
+    if (typeof callback !== "function") {
+      return null;
+    }
+
+    const subscriptionId = ++windowLockSubscriptionId;
+    const listener = (_event, locked) => {
+      callback(Boolean(locked));
+    };
+
+    windowLockSubscriptions.set(subscriptionId, listener);
+    ipcRenderer.on("window:lock-changed", listener);
+    return subscriptionId;
+  },
+  offWindowLockChanged: (subscriptionId) => {
+    const listener = windowLockSubscriptions.get(subscriptionId);
+    if (!listener) {
+      return;
+    }
+
+    ipcRenderer.removeListener("window:lock-changed", listener);
+    windowLockSubscriptions.delete(subscriptionId);
+  },
   getShowShortcut: () => ipcRenderer.invoke("window:get-show-shortcut"),
   setShowShortcut: (shortcut) => ipcRenderer.invoke("window:set-show-shortcut", shortcut),
+  getDeveloperMode: () => ipcRenderer.invoke("window:get-developer-mode"),
+  setDeveloperMode: (enabled) => ipcRenderer.invoke("window:set-developer-mode", enabled),
+  isDeveloperModeAvailable: () =>
+    ipcRenderer.invoke("window:developer-mode-available"),
   getGeneratorOptions: () => ipcRenderer.sendSync("app:get-generator-options-sync"),
   setGeneratorOptions: (options) =>
     ipcRenderer.sendSync("app:set-generator-options-sync", options),

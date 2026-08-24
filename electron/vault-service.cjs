@@ -16,7 +16,7 @@ const NONCE_LENGTH = 12;
 const EXPORT_TYPE = "passworder.entries.export";
 const EXPORT_VERSION = 2;
 const EXPORT_LEGACY_VERSION = 1;
-const MIN_MASTER_PASSWORD_LENGTH = 3;
+const MIN_NEW_PASSWORD_LENGTH = 8;
 const SHORTCUT_MODIFIER_ORDER = ["Command", "Control", "Alt", "Shift"];
 const SHORTCUT_MODIFIER_ALIASES = new Map([
   ["cmd", "Command"],
@@ -491,8 +491,27 @@ function cloneFolder(folder) {
 }
 
 function validateMasterPassword(masterPassword) {
-  if (!masterPassword || masterPassword.trim().length < MIN_MASTER_PASSWORD_LENGTH) {
+  if (!masterPassword || masterPassword.trim().length < MIN_NEW_PASSWORD_LENGTH) {
     throw new Error("errors.masterPasswordTooShort");
+  }
+}
+
+async function verifyCurrentMasterPassword(storagePath, masterPassword) {
+  ensureUnlockedSession();
+
+  if (!masterPassword || !String(masterPassword).trim()) {
+    throw new Error("errors.currentPasswordRequired");
+  }
+
+  const vaultFile = await readVaultFile(storagePath);
+  const key = deriveKey(String(masterPassword), vaultFile.kdf);
+
+  try {
+    if (!verifyMasterPassword(key, vaultFile.verification)) {
+      throw new Error("errors.masterPasswordInvalid");
+    }
+  } finally {
+    key.fill(0);
   }
 }
 
@@ -710,11 +729,17 @@ function parseImportFile(fileContent, password) {
   }
 
   if (parsed?.version === EXPORT_LEGACY_VERSION) {
-    return parseLegacyImportFile(parsed);
+    return {
+      ...parseLegacyImportFile(parsed),
+      unencrypted: true,
+    };
   }
 
   if (parsed?.version === EXPORT_VERSION) {
-    return parseEncryptedImportFile(parsed, password);
+    return {
+      ...parseEncryptedImportFile(parsed, password),
+      unencrypted: false,
+    };
   }
 
   throw new Error("errors.importFileInvalid");
@@ -958,12 +983,13 @@ function validateExportPassword(password) {
     throw new Error("errors.exportPasswordRequired");
   }
 
-  if (password.length < MIN_MASTER_PASSWORD_LENGTH) {
+  if (password.length < MIN_NEW_PASSWORD_LENGTH) {
     throw new Error("errors.exportPasswordTooShort");
   }
 }
 
-async function exportEntries(storagePath, exportPath, password) {
+async function exportEntries(storagePath, exportPath, password, masterPassword) {
+  await verifyCurrentMasterPassword(storagePath, masterPassword);
   const currentSession = ensureUnlockedSession();
   validateExportPassword(password);
 
@@ -993,10 +1019,15 @@ async function exportEntries(storagePath, exportPath, password) {
   }
 }
 
-async function importEntries(storagePath, importPath, password) {
+async function importEntries(storagePath, importPath, password, masterPassword) {
+  await verifyCurrentMasterPassword(storagePath, masterPassword);
   const currentSession = ensureUnlockedSession();
   const fileContent = await fs.readFile(importPath, "utf8");
   const importedPayload = parseImportFile(fileContent, password);
+  const unencrypted = Boolean(importedPayload.unencrypted);
+  let foldersAdded = 0;
+  let added = 0;
+  let updated = 0;
   const currentFolders = currentSession.payload.folders.slice();
   const folderIndexById = new Map(
     currentFolders.map((folder, index) => [folder.id, index]),
@@ -1020,6 +1051,7 @@ async function importEntries(storagePath, importPath, password) {
       currentFolders.push(importedFolder);
       folderIndexById.set(importedFolder.id, currentFolders.length - 1);
       folderIdByName.set(nameKey, importedFolder.id);
+      foldersAdded += 1;
     } else {
       currentFolders[existingIndex] = importedFolder;
       folderIdByName.set(nameKey, importedFolder.id);
@@ -1043,10 +1075,12 @@ async function importEntries(storagePath, importPath, password) {
     if (existingIndex === undefined) {
       currentEntries.push(importedEntry);
       currentIndexById.set(importedEntry.id, currentEntries.length - 1);
+      added += 1;
       continue;
     }
 
     currentEntries[existingIndex] = importedEntry;
+    updated += 1;
   }
 
   validateShortcutAssignments(currentEntries);
@@ -1054,7 +1088,15 @@ async function importEntries(storagePath, importPath, password) {
   currentSession.payload.entries = currentEntries;
 
   await persistSession(storagePath);
-  return currentSession.payload;
+  return {
+    payload: currentSession.payload,
+    summary: {
+      added,
+      updated,
+      foldersAdded,
+    },
+    unencrypted,
+  };
 }
 
 async function reorderEntries(storagePath, entryIds) {

@@ -145,6 +145,39 @@ function AppContent({
   const shortcutsSuspendedRef = useRef(false);
 
   useEffect(() => {
+    function applyWindowLocked(locked: boolean) {
+      if (locked) {
+        document.documentElement.dataset.windowLocked = "";
+        return;
+      }
+
+      delete document.documentElement.dataset.windowLocked;
+    }
+
+    if (!appWindow.supportsWindowLock()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void appWindow.getWindowLocked().then((locked) => {
+      if (!cancelled) {
+        applyWindowLocked(locked);
+      }
+    });
+
+    const unsubscribe = appWindow.subscribeWindowLock((locked) => {
+      applyWindowLocked(locked);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      delete document.documentElement.dataset.windowLocked;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedEntry) {
       return;
     }
@@ -303,7 +336,7 @@ function AppContent({
   const statusMessageKey =
     controller.error ?? localStatus?.key ?? externalCopyNotice ?? controller.notice;
   const statusMessage = statusMessageKey
-    ? resolveText(statusMessageKey)
+    ? resolveText(statusMessageKey, controller.noticeValues)
     : undefined;
   const statusTone: "notice" | "error" = controller.error
     ? "error"

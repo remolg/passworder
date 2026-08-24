@@ -1025,6 +1025,7 @@ function createMainWindow() {
   });
 
   applySavedWindowAnchor();
+  applyWindowLock();
   applyContentProtection();
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -1045,6 +1046,7 @@ function createMainWindow() {
 
   mainWindow.once("ready-to-show", () => {
     applyContentProtection();
+    applyWindowLock();
     if (!isHiddenLaunch) {
       showMainWindow();
     }
@@ -1052,6 +1054,28 @@ function createMainWindow() {
 
   mainWindow.on("show", () => {
     applyContentProtection();
+    applyWindowLock();
+  });
+
+  mainWindow.on("move", () => {
+    if (applyingWindowAnchor || getSavedWindowLocked()) {
+      return;
+    }
+
+    broadcastWindowAnchor(getDisplayedWindowAnchor());
+  });
+
+  mainWindow.on("moved", () => {
+    if (applyingWindowAnchor) {
+      return;
+    }
+
+    if (getSavedWindowLocked()) {
+      applySavedWindowAnchor();
+      return;
+    }
+
+    persistWindowPositionFromBounds();
   });
 
   mainWindow.on("minimize", (event) => {
@@ -1077,8 +1101,41 @@ function getSavedWindowAnchor() {
   return windowAnchor.loadWindowAnchor(getWindowPreferencesPath());
 }
 
+let applyingWindowAnchor = false;
+
+function getDisplayedWindowAnchor() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    const saved = getSavedWindowAnchor();
+    return windowAnchor.isWindowAnchor(saved) ? saved : null;
+  }
+
+  return windowAnchor.matchAnchorFromBounds(
+    mainWindow.getBounds(),
+    windowAnchor.getTargetWorkArea(mainWindow),
+  );
+}
+
+function broadcastWindowAnchor(anchor) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  mainWindow.webContents.send("window:anchor-changed", anchor ?? null);
+}
+
 function applySavedWindowAnchor() {
-  windowAnchor.applyWindowAnchor(mainWindow, getSavedWindowAnchor());
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  applyingWindowAnchor = true;
+  windowAnchor.applyWindowPosition(
+    mainWindow,
+    windowAnchor.loadWindowPosition(getWindowPreferencesPath()),
+  );
+  applyWindowLock();
+  applyingWindowAnchor = false;
+  broadcastWindowAnchor(getDisplayedWindowAnchor());
 }
 
 function setSavedWindowAnchor(anchor) {
@@ -1087,12 +1144,86 @@ function setSavedWindowAnchor(anchor) {
   return nextAnchor;
 }
 
+function persistWindowPositionFromBounds() {
+  if (!mainWindow || mainWindow.isDestroyed() || applyingWindowAnchor) {
+    return;
+  }
+
+  const bounds = mainWindow.getBounds();
+  const workArea = windowAnchor.getTargetWorkArea(mainWindow);
+  const matched = windowAnchor.matchAnchorFromBounds(bounds, workArea);
+  const custom = windowAnchor.boundsToCustomPlacement(bounds, workArea);
+  windowAnchor.saveWindowPosition(getWindowPreferencesPath(), {
+    windowAnchor: matched,
+    windowCustomX: custom.x,
+    windowCustomY: custom.y,
+  });
+  broadcastWindowAnchor(matched);
+}
+
+function getSavedWindowLocked() {
+  return windowAnchor.loadWindowLocked(getWindowPreferencesPath());
+}
+
+function applyWindowLock() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  const locked = getSavedWindowLocked();
+  if (typeof mainWindow.setMovable === "function") {
+    mainWindow.setMovable(!locked);
+  }
+
+  mainWindow.webContents.send("window:lock-changed", locked);
+}
+
+function setSavedWindowLocked(locked) {
+  const nextLocked = windowAnchor.saveWindowLocked(
+    getWindowPreferencesPath(),
+    Boolean(locked),
+  );
+  applyWindowLock();
+  return Boolean(nextLocked);
+}
+
 function getSavedGeneratorOptions() {
   return windowAnchor.loadGeneratorOptions(getWindowPreferencesPath());
 }
 
 function setSavedGeneratorOptions(options) {
   return windowAnchor.saveGeneratorOptions(getWindowPreferencesPath(), options);
+}
+
+function isDeveloperModeAvailable() {
+  return !app.isPackaged;
+}
+
+function getSavedDeveloperMode() {
+  if (!isDeveloperModeAvailable()) {
+    return false;
+  }
+
+  const saved = windowAnchor.loadDeveloperMode(getWindowPreferencesPath());
+  if (typeof saved === "boolean") {
+    return saved;
+  }
+
+  return true;
+}
+
+function setSavedDeveloperMode(enabled) {
+  if (!isDeveloperModeAvailable()) {
+    applyContentProtection();
+    return false;
+  }
+
+  const nextMode = windowAnchor.saveDeveloperMode(
+    getWindowPreferencesPath(),
+    Boolean(enabled),
+  );
+  applyContentProtection();
+  return Boolean(nextMode);
 }
 
 function showMainWindow() {
@@ -1125,7 +1256,7 @@ function applyContentProtection() {
     return;
   }
 
-  mainWindow.setContentProtection(true);
+  mainWindow.setContentProtection(!getSavedDeveloperMode());
 }
 
 function createTray() {
@@ -1398,7 +1529,7 @@ function registerIpcHandlers() {
   ipcMain.handle("vault:delete-folder", async (_event, id) =>
     vaultService.deleteFolder(getVaultStoragePath(), id),
   );
-  ipcMain.handle("vault:export-entries", async (_event, password) => {
+  ipcMain.handle("vault:export-entries", async (_event, password, masterPassword) => {
     try {
       if (typeof password !== "string" || !password.trim()) {
         return { completed: false, error: "errors.exportPasswordRequired" };
@@ -1418,13 +1549,14 @@ function registerIpcHandlers() {
         getVaultStoragePath(),
         result.filePath,
         password,
+        masterPassword,
       );
       return { completed: true };
     } catch (error) {
       return { completed: false, error: toTransferErrorKey(error) };
     }
   });
-  ipcMain.handle("vault:import-entries", async (_event, password) => {
+  ipcMain.handle("vault:import-entries", async (_event, password, masterPassword) => {
     try {
       const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
         filters: [{ name: "JSON", extensions: ["json"] }],
@@ -1435,21 +1567,28 @@ function registerIpcHandlers() {
         return { completed: false };
       }
 
-      const payload = await vaultService.importEntries(
+      const imported = await vaultService.importEntries(
         getVaultStoragePath(),
         result.filePaths[0],
         typeof password === "string" ? password : "",
+        masterPassword,
       );
 
       refreshEntryShortcuts();
 
       return {
         completed: true,
-        payload,
+        payload: imported.payload,
+        summary: imported.summary,
+        unencrypted: imported.unencrypted,
       };
     } catch (error) {
       return { completed: false, error: toTransferErrorKey(error) };
     }
+  });
+  ipcMain.handle("vault:reveal-storage", async () => {
+    const storagePath = getVaultStoragePath();
+    shell.showItemInFolder(storagePath);
   });
   ipcMain.handle("vault:reorder-entries", async (_event, entryIds) =>
     vaultService.reorderEntries(getVaultStoragePath(), entryIds),
@@ -1498,13 +1637,24 @@ function registerIpcHandlers() {
   ipcMain.handle("window:open-external", async (_event, url) => {
     await shell.openExternal(url);
   });
-  ipcMain.handle("window:get-anchor", async () => getSavedWindowAnchor());
+  ipcMain.handle("window:get-anchor", async () => getDisplayedWindowAnchor());
   ipcMain.handle("window:set-anchor", async (_event, anchor) =>
     setSavedWindowAnchor(anchor),
+  );
+  ipcMain.handle("window:get-locked", async () => getSavedWindowLocked());
+  ipcMain.handle("window:set-locked", async (_event, locked) =>
+    setSavedWindowLocked(locked),
   );
   ipcMain.handle("window:get-show-shortcut", async () => getSavedShowShortcut());
   ipcMain.handle("window:set-show-shortcut", async (_event, shortcut) =>
     setSavedShowShortcut(shortcut),
+  );
+  ipcMain.handle("window:get-developer-mode", async () => getSavedDeveloperMode());
+  ipcMain.handle("window:set-developer-mode", async (_event, enabled) =>
+    setSavedDeveloperMode(enabled),
+  );
+  ipcMain.handle("window:developer-mode-available", async () =>
+    isDeveloperModeAvailable(),
   );
   ipcMain.on("app:get-generator-options-sync", (event) => {
     event.returnValue = getSavedGeneratorOptions();

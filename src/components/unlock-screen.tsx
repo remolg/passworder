@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n";
 
-const MIN_MASTER_PASSWORD_LENGTH = 3;
+const MIN_NEW_PASSWORD_LENGTH = 8;
 
 interface UnlockScreenProps {
   hasVault: boolean;
@@ -56,7 +56,7 @@ export function UnlockScreen({
     }
 
     if (!hasVault) {
-      if (masterPassword.length < MIN_MASTER_PASSWORD_LENGTH) {
+      if (masterPassword.length < MIN_NEW_PASSWORD_LENGTH) {
         setLocalError("errors.masterPasswordTooShort");
         return;
       }

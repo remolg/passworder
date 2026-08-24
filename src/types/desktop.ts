@@ -37,8 +37,13 @@ export interface UpdateDownloadState {
 
 export type WindowAnchor =
   | "top-left"
+  | "top-center"
   | "top-right"
+  | "center-left"
+  | "center"
+  | "center-right"
   | "bottom-left"
+  | "bottom-center"
   | "bottom-right";
 
 export interface EntrySecretCopiedEvent {
@@ -55,8 +60,15 @@ export interface DesktopVaultApi {
   createFolder: (input: FolderMutationInput) => Promise<VaultPayload>;
   updateFolder: (input: FolderMutationInput) => Promise<VaultPayload>;
   deleteFolder: (id: string) => Promise<VaultPayload>;
-  exportEntries: (password: string) => Promise<ExportEntriesResult>;
-  importEntries: (password?: string) => Promise<ImportEntriesResult>;
+  exportEntries: (
+    password: string,
+    masterPassword: string,
+  ) => Promise<ExportEntriesResult>;
+  importEntries: (
+    password: string | undefined,
+    masterPassword: string,
+  ) => Promise<ImportEntriesResult>;
+  revealStorage?: () => Promise<void>;
   reorderEntries: (entryIds: string[]) => Promise<VaultPayload>;
   reorderFolders: (folderIds: string[]) => Promise<VaultPayload>;
   deleteEntry: (id: string) => Promise<VaultPayload>;
@@ -79,10 +91,21 @@ export interface DesktopVaultApi {
   minimizeWindow: () => Promise<void>;
   closeWindow: () => Promise<void>;
   openExternalUrl: (url: string) => Promise<void>;
-  getWindowAnchor?: () => Promise<WindowAnchor>;
+  getWindowAnchor?: () => Promise<WindowAnchor | null>;
   setWindowAnchor?: (anchor: WindowAnchor) => Promise<WindowAnchor>;
+  onWindowAnchorChanged?: (
+    callback: (anchor: WindowAnchor | null) => void,
+  ) => number | null;
+  offWindowAnchorChanged?: (subscriptionId: number) => void;
+  getWindowLocked?: () => Promise<boolean>;
+  setWindowLocked?: (locked: boolean) => Promise<boolean>;
+  onWindowLockChanged?: (callback: (locked: boolean) => void) => number | null;
+  offWindowLockChanged?: (subscriptionId: number) => void;
   getShowShortcut?: () => Promise<string>;
   setShowShortcut?: (shortcut: string) => Promise<string>;
+  getDeveloperMode?: () => Promise<boolean>;
+  setDeveloperMode?: (enabled: boolean) => Promise<boolean>;
+  isDeveloperModeAvailable?: () => Promise<boolean>;
   getGeneratorOptions?: () => PasswordGeneratorOptions | null;
   setGeneratorOptions?: (options: PasswordGeneratorOptions) => PasswordGeneratorOptions;
 }

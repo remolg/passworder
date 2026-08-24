@@ -91,6 +91,10 @@ select {
     -webkit-app-region: no-drag;
   }
 
+  html[data-window-locked] .titlebar-drag {
+    -webkit-app-region: no-drag;
+  }
+
   .mono-label {
     font-family: "Space Grotesk", Inter, "Segoe UI", sans-serif;
     letter-spacing: 0.16em;

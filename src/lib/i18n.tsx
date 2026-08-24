@@ -169,6 +169,10 @@ const EN_TRANSLATIONS = {
   "generator.apply": "Add to Entry",
   "settings.badge": "Vault Settings",
   "settings.title": "Settings",
+  "settings.tabGeneral": "General",
+  "settings.tabWindow": "Window",
+  "settings.tabSecurity": "Security",
+  "settings.tabBackup": "Backup",
   "settings.description":
     "Local security preferences such as auto-lock and clipboard clear.",
   "settings.securityTitle": "Vault is secure",
@@ -180,7 +184,7 @@ const EN_TRANSLATIONS = {
   "settings.currentPasswordLabel": "Current Master Password",
   "settings.currentPasswordPlaceholder": "Enter the current master password",
   "settings.newPasswordLabel": "New Master Password",
-  "settings.newPasswordPlaceholder": "Use at least 3 characters",
+  "settings.newPasswordPlaceholder": "Use at least 8 characters",
   "settings.confirmNewPasswordLabel": "Confirm New Password",
   "settings.confirmNewPasswordPlaceholder": "Enter the new master password again",
   "settings.changePassword": "Change Master Password",
@@ -193,15 +197,26 @@ const EN_TRANSLATIONS = {
   "settings.languageDescription": "Choose the display language for the app.",
   "settings.windowPositionLabel": "Window Position",
   "settings.windowAnchorTopLeft": "Top left",
+  "settings.windowAnchorTopCenter": "Top center",
   "settings.windowAnchorTopRight": "Top right",
+  "settings.windowAnchorCenterLeft": "Center left",
+  "settings.windowAnchorCenter": "Center",
+  "settings.windowAnchorCenterRight": "Center right",
   "settings.windowAnchorBottomLeft": "Bottom left",
+  "settings.windowAnchorBottomCenter": "Bottom center",
   "settings.windowAnchorBottomRight": "Bottom right",
+  "settings.windowLockLabel": "Lock window",
+  "settings.windowLockDescription":
+    "Keep the window from being dragged by accident.",
   "settings.showShortcutLabel": "Open App Shortcut",
   "settings.showShortcutPlaceholder": "Press a key combination",
   "settings.showShortcutHint":
     "Press once to open, again to hide. Use Ctrl, Alt, Shift, or an F key.",
   "settings.showShortcutHintMac":
     "Press once to open, again to hide. Use Cmd, Ctrl, Option, Shift, or an F key.",
+  "settings.developerModeLabel": "Developer Mode",
+  "settings.developerModeDescription":
+    "Allow screenshots and screen capture of the vault window.",
   "settings.transferLabel": "Import / Export",
   "settings.exportEntries": "Export Passwords",
   "settings.exportEntriesHint": "Create an encrypted JSON backup of your current vault.",
@@ -211,7 +226,7 @@ const EN_TRANSLATIONS = {
     "Export is always encrypted. Set a backup password when exporting, then use the same password to import.",
   "settings.exportDialogTitle": "Export Passwords",
   "settings.exportDialogDescription":
-    "Choose a password to encrypt the backup file. You will need this password to import later.",
+    "Confirm your master password, then choose a backup password of at least 8 characters. You will need the backup password to import later.",
   "settings.exportPasswordLabel": "Backup Password",
   "settings.exportPasswordPlaceholder": "Enter a backup password",
   "settings.exportPasswordConfirmLabel": "Confirm Backup Password",
@@ -219,12 +234,21 @@ const EN_TRANSLATIONS = {
   "settings.exportConfirm": "Export Encrypted Backup",
   "settings.importDialogTitle": "Import Passwords",
   "settings.importDialogDescription":
-    "Enter the backup password used when the file was exported. Leave empty only for older unencrypted backups.",
+    "Confirm your master password. Encrypted backups also need the backup password. Leave the backup password empty only for older unencrypted files, then delete that file.",
   "settings.importPasswordLabel": "Backup Password",
   "settings.importPasswordPlaceholder": "Enter the backup password",
   "settings.importConfirm": "Choose File and Import",
-  "settings.storagePathLabel": "Local Storage Path",
+  "settings.storagePathLabel": "Local Vault",
   "settings.storagePathFallback": "Shown at runtime.",
+  "settings.storageEncryptedDescription":
+    "The vault is stored encrypted on this device. Nobody can read it without the master password.",
+  "settings.openVaultFolder": "Open vault folder",
+  "settings.exportMasterPasswordLabel": "Current Master Password",
+  "settings.exportMasterPasswordPlaceholder": "Confirm the current master password",
+  "settings.importMasterPasswordLabel": "Current Master Password",
+  "settings.importMasterPasswordPlaceholder": "Confirm the current master password",
+  "settings.importUnencryptedWarning":
+    "Older unencrypted backups are readable by anyone with the file. Import them, then delete the file.",
   "edit.title": "Edit Entry",
   "edit.description":
     "When changes are saved, the entry is encrypted again inside the local vault.",
@@ -247,14 +271,14 @@ const EN_TRANSLATIONS = {
     "The selected file is not a valid Passworder export.",
   "errors.exportPasswordRequired": "Backup password cannot be empty.",
   "errors.exportPasswordTooShort":
-    "Backup password must be at least 3 characters.",
+    "Backup password must be at least 8 characters.",
   "errors.exportPasswordMismatch": "Backup password fields do not match.",
   "errors.exportPasswordInvalid": "Backup password could not be verified.",
   "errors.vaultLocked": "Vault is locked.",
   "errors.currentPasswordRequired": "Current master password cannot be empty.",
   "errors.newMasterPasswordRequired": "New master password cannot be empty.",
   "errors.masterPasswordTooShort":
-    "Master password must be at least 3 characters.",
+    "Master password must be at least 8 characters.",
   "errors.entryServiceRequired": "Service / site is required.",
   "errors.entryPasswordRequired": "Password is required.",
   "errors.shortcutInvalid":
@@ -292,7 +316,10 @@ const EN_TRANSLATIONS = {
   "notice.folderDeleted": "Folder deleted.",
   "notice.masterPasswordUpdated": "Master password updated.",
   "notice.exportCompleted": "Passwords exported.",
-  "notice.importCompleted": "Passwords imported.",
+  "notice.importCompleted":
+    "Imported {added} new and {updated} updated entries.",
+  "notice.importCompletedUnencrypted":
+    "Imported {added} new and {updated} updated entries. Delete the unencrypted backup file.",
   "notice.settingsSaved": "Vault settings saved.",
   "notice.copiedToClipboard": "Copied",
 } as const;
@@ -466,6 +493,10 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "generator.apply": "Kayda Ekle",
   "settings.badge": "Kasa Ayarları",
   "settings.title": "Ayarlar",
+  "settings.tabGeneral": "Genel",
+  "settings.tabWindow": "Pencere",
+  "settings.tabSecurity": "Güvenlik",
+  "settings.tabBackup": "Yedek",
   "settings.description":
     "Otomatik kilit ve pano temizleme gibi lokal güvenlik tercihleri.",
   "settings.securityTitle": "Kasa güvenli modda",
@@ -477,7 +508,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "settings.currentPasswordLabel": "Mevcut Master Password",
   "settings.currentPasswordPlaceholder": "Mevcut master password girin",
   "settings.newPasswordLabel": "Yeni Master Password",
-  "settings.newPasswordPlaceholder": "En az 3 karakter kullanın",
+  "settings.newPasswordPlaceholder": "En az 8 karakter kullanın",
   "settings.confirmNewPasswordLabel": "Yeni Şifre Tekrar",
   "settings.confirmNewPasswordPlaceholder": "Yeni master password tekrar girin",
   "settings.changePassword": "Master Password Değiştir",
@@ -490,15 +521,26 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "settings.languageDescription": "Uygulamanın görüntüleme dilini seçin.",
   "settings.windowPositionLabel": "Pencere Konumu",
   "settings.windowAnchorTopLeft": "Sol üst",
+  "settings.windowAnchorTopCenter": "Üst orta",
   "settings.windowAnchorTopRight": "Sağ üst",
+  "settings.windowAnchorCenterLeft": "Sol orta",
+  "settings.windowAnchorCenter": "Orta",
+  "settings.windowAnchorCenterRight": "Sağ orta",
   "settings.windowAnchorBottomLeft": "Sol alt",
+  "settings.windowAnchorBottomCenter": "Alt orta",
   "settings.windowAnchorBottomRight": "Sağ alt",
+  "settings.windowLockLabel": "Pencereyi kilitle",
+  "settings.windowLockDescription":
+    "Yanlışlıkla sürüklenmesini engelle.",
   "settings.showShortcutLabel": "Uygulamayı Açma Kısayolu",
   "settings.showShortcutPlaceholder": "Tuş kombinasyonuna basın",
   "settings.showShortcutHint":
     "Bir kez basınca açılır, tekrar basınca gizlenir. Ctrl, Alt, Shift veya bir F tuşu kullanın.",
   "settings.showShortcutHintMac":
     "Bir kez basınca açılır, tekrar basınca gizlenir. Cmd, Ctrl, Option, Shift veya bir F tuşu kullanın.",
+  "settings.developerModeLabel": "Geliştirici Modu",
+  "settings.developerModeDescription":
+    "Kasa penceresinin ekran görüntüsü ve ekran paylaşımına izin ver.",
   "settings.transferLabel": "İçe / Dışa Aktar",
   "settings.exportEntries": "Şifreleri Dışa Aktar",
   "settings.exportEntriesHint": "Mevcut kasanın şifreli JSON yedeğini oluşturun.",
@@ -508,7 +550,7 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Dışa aktarma her zaman şifrelenir. Yedek için bir parola belirleyin; içe aktarırken aynı parolayı kullanın.",
   "settings.exportDialogTitle": "Şifreleri Dışa Aktar",
   "settings.exportDialogDescription":
-    "Yedek dosyasını şifrelemek için bir parola seçin. Daha sonra içe aktarmak için bu parola gerekir.",
+    "Master password'ü doğrulayın, sonra en az 8 karakterlik bir yedek parolası seçin. İçe aktarmak için yedek parolası gerekir.",
   "settings.exportPasswordLabel": "Yedek Parolası",
   "settings.exportPasswordPlaceholder": "Yedek parolasını girin",
   "settings.exportPasswordConfirmLabel": "Yedek Parolasını Onayla",
@@ -516,12 +558,21 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "settings.exportConfirm": "Şifreli Yedeği Dışa Aktar",
   "settings.importDialogTitle": "Şifreleri İçe Aktar",
   "settings.importDialogDescription":
-    "Dosya dışa aktarılırken kullanılan yedek parolasını girin. Yalnızca eski şifresiz yedekler için boş bırakın.",
+    "Master password'ü doğrulayın. Şifreli yedekler için yedek parolasını da girin. Yalnızca eski şifresiz dosyalar için yedek parolasını boş bırakın; aktarınca o dosyayı silin.",
   "settings.importPasswordLabel": "Yedek Parolası",
   "settings.importPasswordPlaceholder": "Yedek parolasını girin",
   "settings.importConfirm": "Dosya Seç ve İçe Aktar",
-  "settings.storagePathLabel": "Lokal Veri Yolu",
+  "settings.storagePathLabel": "Yerel Kasa",
   "settings.storagePathFallback": "Çalışma zamanında gösterilecek.",
+  "settings.storageEncryptedDescription":
+    "Kasa bu cihazda şifreli tutulur. Master password olmadan okunamaz.",
+  "settings.openVaultFolder": "Kasa klasörünü aç",
+  "settings.exportMasterPasswordLabel": "Mevcut Master Password",
+  "settings.exportMasterPasswordPlaceholder": "Mevcut master password'ü doğrulayın",
+  "settings.importMasterPasswordLabel": "Mevcut Master Password",
+  "settings.importMasterPasswordPlaceholder": "Mevcut master password'ü doğrulayın",
+  "settings.importUnencryptedWarning":
+    "Eski şifresiz yedekler dosyayı alan herkes tarafından okunabilir. İçe aktarın, sonra dosyayı silin.",
   "edit.title": "Kaydı Düzenle",
   "edit.description":
     "Değişiklikler kaydedildiğinde kayıt lokal kasada tekrar şifrelenir.",
@@ -544,14 +595,14 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
     "Seçilen dosya geçerli bir Passworder aktarım dosyası değil.",
   "errors.exportPasswordRequired": "Yedek parolası boş bırakılamaz.",
   "errors.exportPasswordTooShort":
-    "Yedek parolası en az 3 karakter olmalı.",
+    "Yedek parolası en az 8 karakter olmalı.",
   "errors.exportPasswordMismatch": "Yedek parolası alanları eşleşmiyor.",
   "errors.exportPasswordInvalid": "Yedek parolası doğrulanamadı.",
   "errors.vaultLocked": "Kasa kilitli.",
   "errors.currentPasswordRequired": "Mevcut master password boş bırakılamaz.",
   "errors.newMasterPasswordRequired": "Yeni master password boş bırakılamaz.",
   "errors.masterPasswordTooShort":
-    "Master password en az 3 karakter olmalı.",
+    "Master password en az 8 karakter olmalı.",
   "errors.entryServiceRequired": "Servis / site alanı zorunlu.",
   "errors.entryPasswordRequired": "Şifre alanı zorunlu.",
   "errors.shortcutInvalid":
@@ -589,7 +640,10 @@ const TR_TRANSLATIONS: Record<TranslationKey, string> = {
   "notice.folderDeleted": "Klasör silindi.",
   "notice.masterPasswordUpdated": "Master password güncellendi.",
   "notice.exportCompleted": "Şifreler dışa aktarıldı.",
-  "notice.importCompleted": "Şifreler içe aktarıldı.",
+  "notice.importCompleted":
+    "{added} yeni ve {updated} güncellenmiş kayıt içe aktarıldı.",
+  "notice.importCompletedUnencrypted":
+    "{added} yeni ve {updated} güncellenmiş kayıt içe aktarıldı. Şifresiz yedek dosyasını silin.",
   "notice.settingsSaved": "Kasa ayarları kaydedildi.",
   "notice.copiedToClipboard": "Kopyalandı",
 };

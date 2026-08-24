@@ -1,9 +1,12 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
+  type LucideIcon,
   Check,
   ChevronDown,
   ClipboardCheck,
+  Code2,
   Download,
+  FolderOpen,
   Globe,
   HardDrive,
   Keyboard,
@@ -16,6 +19,7 @@ import {
 
 import { ShortcutCaptureInput } from "@/components/shortcut-capture-input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -43,14 +47,39 @@ const WINDOW_ANCHOR_OPTIONS: Array<{
     className: "top-2 left-2",
   },
   {
+    value: "top-center",
+    labelKey: "settings.windowAnchorTopCenter",
+    className: "top-2 left-1/2 -translate-x-1/2",
+  },
+  {
     value: "top-right",
     labelKey: "settings.windowAnchorTopRight",
     className: "top-2 right-2",
   },
   {
+    value: "center-left",
+    labelKey: "settings.windowAnchorCenterLeft",
+    className: "top-1/2 left-2 -translate-y-1/2",
+  },
+  {
+    value: "center",
+    labelKey: "settings.windowAnchorCenter",
+    className: "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+  },
+  {
+    value: "center-right",
+    labelKey: "settings.windowAnchorCenterRight",
+    className: "top-1/2 right-2 -translate-y-1/2",
+  },
+  {
     value: "bottom-left",
     labelKey: "settings.windowAnchorBottomLeft",
     className: "bottom-2 left-2",
+  },
+  {
+    value: "bottom-center",
+    labelKey: "settings.windowAnchorBottomCenter",
+    className: "bottom-2 left-1/2 -translate-x-1/2",
   },
   {
     value: "bottom-right",
@@ -59,15 +88,34 @@ const WINDOW_ANCHOR_OPTIONS: Array<{
   },
 ];
 
-const MIN_MASTER_PASSWORD_LENGTH = 3;
+const MIN_NEW_PASSWORD_LENGTH = 8;
+
+type SettingsTabId = "general" | "window" | "security" | "backup";
+
+const SETTINGS_TABS: Array<{
+  id: SettingsTabId;
+  labelKey: TranslationKey;
+  icon: LucideIcon;
+}> = [
+  { id: "general", labelKey: "settings.tabGeneral", icon: Globe },
+  { id: "window", labelKey: "settings.tabWindow", icon: Pin },
+  { id: "security", labelKey: "settings.tabSecurity", icon: ShieldCheck },
+  { id: "backup", labelKey: "settings.tabBackup", icon: HardDrive },
+];
 
 interface VaultSettingsCardProps {
   busy?: boolean;
   settings: VaultSettings;
   storagePath?: string;
   usedShortcuts?: string[];
-  onExport?: (password: string) => void | Promise<unknown>;
-  onImport?: (password?: string) => void | Promise<unknown>;
+  onExport?: (
+    password: string,
+    masterPassword: string,
+  ) => void | Promise<unknown>;
+  onImport?: (
+    password: string | undefined,
+    masterPassword: string,
+  ) => void | Promise<unknown>;
   onChangeMasterPassword?: (
     currentPassword: string,
     nextPassword: string,
@@ -91,11 +139,16 @@ export function VaultSettingsCard({
 }: VaultSettingsCardProps) {
   const { language, t } = useI18n();
   const compactTitle = language === "tr" ? "Ayarlar" : "Settings";
-  const [windowAnchor, setWindowAnchor] = useState<WindowAnchor>("bottom-right");
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+  const settingsContentRef = useRef<HTMLDivElement | null>(null);
+  const [windowAnchor, setWindowAnchor] = useState<WindowAnchor | null>(null);
+  const [windowLocked, setWindowLocked] = useState(false);
   const [showShortcut, setShowShortcut] = useState("");
   const [showShortcutError, setShowShortcutError] = useState<TranslationKey | null>(
     null,
   );
+  const [developerMode, setDeveloperMode] = useState(false);
+  const [developerModeAvailable, setDeveloperModeAvailable] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [nextPassword, setNextPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -104,7 +157,9 @@ export function VaultSettingsCard({
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [exportPassword, setExportPassword] = useState("");
   const [exportPasswordConfirm, setExportPasswordConfirm] = useState("");
+  const [exportMasterPassword, setExportMasterPassword] = useState("");
   const [importPassword, setImportPassword] = useState("");
+  const [importMasterPassword, setImportMasterPassword] = useState("");
   const [exportError, setExportError] = useState<TranslationKey | null>(null);
   const [importError, setImportError] = useState<TranslationKey | null>(null);
   const autoLockOptions = useMemo(
@@ -130,8 +185,15 @@ export function VaultSettingsCard({
     ],
     [t],
   );
+
+  useEffect(() => {
+    settingsContentRef.current?.scrollTo({ top: 0 });
+  }, [activeTab]);
+
   const canPinWindow = appWindow.supportsAnchor();
+  const canLockWindow = appWindow.supportsWindowLock();
   const canAssignShowShortcut = appWindow.supportsShowShortcut();
+  const canToggleDeveloperMode = developerModeAvailable;
 
   useEffect(() => {
     if (!canPinWindow) {
@@ -146,10 +208,42 @@ export function VaultSettingsCard({
       }
     });
 
+    const unsubscribe = appWindow.subscribeAnchor((anchor) => {
+      if (!cancelled) {
+        setWindowAnchor(anchor);
+      }
+    });
+
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [canPinWindow]);
+
+  useEffect(() => {
+    if (!canLockWindow) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void appWindow.getWindowLocked().then((locked) => {
+      if (!cancelled) {
+        setWindowLocked(locked);
+      }
+    });
+
+    const unsubscribe = appWindow.subscribeWindowLock((locked) => {
+      if (!cancelled) {
+        setWindowLocked(locked);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [canLockWindow]);
 
   useEffect(() => {
     if (!canAssignShowShortcut) {
@@ -169,9 +263,65 @@ export function VaultSettingsCard({
     };
   }, [canAssignShowShortcut]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void appWindow.isDeveloperModeAvailable().then((available) => {
+      if (!cancelled) {
+        setDeveloperModeAvailable(available);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!canToggleDeveloperMode) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void appWindow.getDeveloperMode().then((enabled) => {
+      if (!cancelled) {
+        setDeveloperMode(enabled);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canToggleDeveloperMode]);
+
   async function handleWindowAnchorChange(anchor: WindowAnchor) {
     setWindowAnchor(anchor);
     await appWindow.setAnchor(anchor);
+  }
+
+  async function handleWindowLockChange(locked: boolean) {
+    const previous = windowLocked;
+    setWindowLocked(locked);
+
+    try {
+      const nextLocked = await appWindow.setWindowLocked(locked);
+      setWindowLocked(nextLocked);
+    } catch {
+      setWindowLocked(previous);
+    }
+  }
+
+  async function handleDeveloperModeChange(enabled: boolean) {
+    const previous = developerMode;
+    setDeveloperMode(enabled);
+
+    try {
+      const nextMode = await appWindow.setDeveloperMode(enabled);
+      setDeveloperMode(nextMode);
+    } catch {
+      setDeveloperMode(previous);
+    }
   }
 
   async function handleShowShortcutChange(shortcut: string) {
@@ -212,7 +362,7 @@ export function VaultSettingsCard({
       return;
     }
 
-    if (nextPassword.length < MIN_MASTER_PASSWORD_LENGTH) {
+    if (nextPassword.length < MIN_NEW_PASSWORD_LENGTH) {
       setPasswordError("errors.masterPasswordTooShort");
       return;
     }
@@ -236,23 +386,30 @@ export function VaultSettingsCard({
   function resetExportDialog() {
     setExportPassword("");
     setExportPasswordConfirm("");
+    setExportMasterPassword("");
     setExportError(null);
   }
 
   function resetImportDialog() {
     setImportPassword("");
+    setImportMasterPassword("");
     setImportError(null);
   }
 
   async function handleExportSubmit() {
     setExportError(null);
 
+    if (!exportMasterPassword.trim()) {
+      setExportError("errors.currentPasswordRequired");
+      return;
+    }
+
     if (!exportPassword.trim()) {
       setExportError("errors.exportPasswordRequired");
       return;
     }
 
-    if (exportPassword.length < MIN_MASTER_PASSWORD_LENGTH) {
+    if (exportPassword.length < MIN_NEW_PASSWORD_LENGTH) {
       setExportError("errors.exportPasswordTooShort");
       return;
     }
@@ -262,7 +419,7 @@ export function VaultSettingsCard({
       return;
     }
 
-    const result = await onExport?.(exportPassword);
+    const result = await onExport?.(exportPassword, exportMasterPassword);
     if (result === false) {
       return;
     }
@@ -279,7 +436,13 @@ export function VaultSettingsCard({
 
   async function handleImportSubmit() {
     setImportError(null);
-    const result = await onImport?.(importPassword);
+
+    if (!importMasterPassword.trim()) {
+      setImportError("errors.currentPasswordRequired");
+      return;
+    }
+
+    const result = await onImport?.(importPassword, importMasterPassword);
     if (result === false) {
       return;
     }
@@ -302,237 +465,327 @@ export function VaultSettingsCard({
         </h2>
       </div>
 
-      <div className="mx-5 mt-3 h-px bg-white/[0.05]" />
+      <div
+        className="mx-5 mt-3 grid grid-cols-4 gap-1 rounded-[14px] border border-white/[0.06] bg-white/[0.03] p-1"
+        role="tablist"
+        aria-label={compactTitle}
+      >
+        {SETTINGS_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-        <div className="divide-y divide-white/[0.05]">
-          <SettingRow
-            icon={<TimerReset className="h-4 w-4" />}
-            label={t("settings.autoLockLabel")}
-          >
-            <SettingsSelect
-              value={settings.autoLockMinutes}
-              options={autoLockOptions}
-              onChange={(value) =>
-                onChange({
-                  ...settings,
-                  autoLockMinutes: value,
-                })
-              }
-            />
-          </SettingRow>
-
-          <SettingRow
-            icon={<ClipboardCheck className="h-4 w-4" />}
-            label={t("settings.clipboardLabel")}
-          >
-            <SettingsSelect
-              value={settings.clipboardClearSeconds}
-              options={clipboardOptions}
-              onChange={(value) =>
-                onChange({
-                  ...settings,
-                  clipboardClearSeconds: value,
-                })
-              }
-            />
-          </SettingRow>
-
-          <SettingRow
-            icon={<Globe className="h-4 w-4" />}
-            label={t("settings.languageLabel")}
-          >
-            <SettingsSelect
-              value={settings.language}
-              options={languageOptions}
-              onChange={(value) =>
-                onChange({
-                  ...settings,
-                  language: value,
-                })
-              }
-            />
-          </SettingRow>
-
-          {canPinWindow ? (
-            <SettingRow
-              icon={<Pin className="h-4 w-4" />}
-              label={t("settings.windowPositionLabel")}
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 rounded-[10px] px-1 py-2 text-[10px] font-medium leading-tight transition-colors",
+                active
+                  ? "bg-primary text-primary-foreground shadow-[0_8px_18px_rgba(99,102,241,0.22)]"
+                  : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+              )}
             >
-              <WindowAnchorPicker
-                value={windowAnchor}
-                onChange={(value) => {
-                  void handleWindowAnchorChange(value);
-                }}
+              <Icon className="h-3.5 w-3.5" />
+              {t(tab.labelKey)}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        ref={settingsContentRef}
+        className="min-h-0 flex-1 overflow-y-auto px-5 pb-5"
+      >
+        {activeTab === "general" ? (
+          <div className="divide-y divide-white/[0.05]">
+            <SettingRow
+              icon={<TimerReset className="h-4 w-4" />}
+              label={t("settings.autoLockLabel")}
+            >
+              <SettingsSelect
+                value={settings.autoLockMinutes}
+                options={autoLockOptions}
+                onChange={(value) =>
+                  onChange({
+                    ...settings,
+                    autoLockMinutes: value,
+                  })
+                }
               />
             </SettingRow>
-          ) : null}
 
-          {canAssignShowShortcut ? (
             <SettingRow
-              icon={<Keyboard className="h-4 w-4" />}
-              label={t("settings.showShortcutLabel")}
+              icon={<ClipboardCheck className="h-4 w-4" />}
+              label={t("settings.clipboardLabel")}
             >
-              <div className="space-y-3">
-                <ShortcutCaptureInput
-                  id="settings-show-shortcut"
-                  allowMouse={false}
-                  value={showShortcut}
-                  onChange={(value) => {
-                    void handleShowShortcutChange(value);
-                  }}
-                  onRejected={(messageKey) => {
-                    if (isTranslationKey(messageKey)) {
-                      setShowShortcutError(messageKey);
-                    }
-                  }}
-                  onFocus={() => onShortcutSuspendChange?.(true)}
-                  onBlur={() => onShortcutSuspendChange?.(false)}
-                  placeholder={t("settings.showShortcutPlaceholder")}
-                  clearLabel={t("fields.clearShortcut")}
-                />
-                <p className="text-[11px] leading-5 text-muted-foreground">
-                  {t(
-                    isMacRuntime()
-                      ? "settings.showShortcutHintMac"
-                      : "settings.showShortcutHint",
-                  )}
-                </p>
-                {showShortcutError ? (
-                  <p className="text-[12px] text-destructive">{t(showShortcutError)}</p>
-                ) : null}
-              </div>
+              <SettingsSelect
+                value={settings.clipboardClearSeconds}
+                options={clipboardOptions}
+                onChange={(value) =>
+                  onChange({
+                    ...settings,
+                    clipboardClearSeconds: value,
+                  })
+                }
+              />
             </SettingRow>
-          ) : null}
-        </div>
 
-        <div className="mt-6 h-px bg-white/[0.05]" />
-
-        <div className="pt-5">
-          <div className="flex items-center gap-2">
-            <LockKeyhole className="h-4 w-4 text-primary" />
-            <p className="mono-label text-[10px] text-muted-foreground">
-              {t("settings.masterPasswordLabel")}
-            </p>
+            <SettingRow
+              icon={<Globe className="h-4 w-4" />}
+              label={t("settings.languageLabel")}
+            >
+              <SettingsSelect
+                value={settings.language}
+                options={languageOptions}
+                onChange={(value) =>
+                  onChange({
+                    ...settings,
+                    language: value,
+                  })
+                }
+              />
+            </SettingRow>
           </div>
-          <p className="mt-3 text-[12px] leading-6 text-foreground/88">
-            {t("settings.masterPasswordDescription")}
-          </p>
+        ) : null}
 
-          <form
-            className="mt-4 space-y-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handleMasterPasswordSubmit();
-            }}
-          >
-            <PasswordField
-              id="settings-current-password"
-              label={t("settings.currentPasswordLabel")}
-              value={currentPassword}
-              placeholder={t("settings.currentPasswordPlaceholder")}
-              disabled={busy}
-              onChange={(value) => {
-                setCurrentPassword(value);
-                if (passwordError) {
-                  setPasswordError(null);
-                }
-              }}
-            />
-
-            <PasswordField
-              id="settings-new-password"
-              label={t("settings.newPasswordLabel")}
-              value={nextPassword}
-              placeholder={t("settings.newPasswordPlaceholder")}
-              disabled={busy}
-              onChange={(value) => {
-                setNextPassword(value);
-                if (passwordError) {
-                  setPasswordError(null);
-                }
-              }}
-            />
-
-            <PasswordField
-              id="settings-confirm-password"
-              label={t("settings.confirmNewPasswordLabel")}
-              value={confirmPassword}
-              placeholder={t("settings.confirmNewPasswordPlaceholder")}
-              disabled={busy}
-              onChange={(value) => {
-                setConfirmPassword(value);
-                if (passwordError) {
-                  setPasswordError(null);
-                }
-              }}
-            />
-
-            {passwordError ? (
-              <p className="text-[12px] text-destructive">{t(passwordError)}</p>
+        {activeTab === "window" ? (
+          <div className="divide-y divide-white/[0.05]">
+            {canPinWindow ? (
+              <SettingRow
+                icon={<Pin className="h-4 w-4" />}
+                label={t("settings.windowPositionLabel")}
+              >
+                <WindowAnchorPicker
+                  value={windowAnchor}
+                  onChange={(value) => {
+                    void handleWindowAnchorChange(value);
+                  }}
+                />
+              </SettingRow>
             ) : null}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={busy || !onChangeMasterPassword}
-            >
-              <LockKeyhole className="h-4 w-4" />
-              {t("settings.changePassword")}
-            </Button>
-          </form>
-        </div>
+            {canLockWindow ? (
+              <SettingRow
+                icon={<LockKeyhole className="h-4 w-4" />}
+                label={t("settings.windowLockLabel")}
+                description={t("settings.windowLockDescription")}
+                trailing={
+                  <Switch
+                    checked={windowLocked}
+                    onCheckedChange={(checked) => {
+                      void handleWindowLockChange(checked);
+                    }}
+                    aria-label={t("settings.windowLockLabel")}
+                    className="border-white/10 bg-white/[0.1] data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                  />
+                }
+              />
+            ) : null}
 
-        <div className="mt-6 h-px bg-white/[0.05]" />
-
-        <div className="pt-5">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <p className="mono-label text-[10px] text-muted-foreground">
-              {t("settings.transferLabel")}
-            </p>
+            {canAssignShowShortcut ? (
+              <SettingRow
+                icon={<Keyboard className="h-4 w-4" />}
+                label={t("settings.showShortcutLabel")}
+              >
+                <div className="space-y-3">
+                  <ShortcutCaptureInput
+                    id="settings-show-shortcut"
+                    allowMouse={false}
+                    value={showShortcut}
+                    onChange={(value) => {
+                      void handleShowShortcutChange(value);
+                    }}
+                    onRejected={(messageKey) => {
+                      if (isTranslationKey(messageKey)) {
+                        setShowShortcutError(messageKey);
+                      }
+                    }}
+                    onFocus={() => onShortcutSuspendChange?.(true)}
+                    onBlur={() => onShortcutSuspendChange?.(false)}
+                    placeholder={t("settings.showShortcutPlaceholder")}
+                    clearLabel={t("fields.clearShortcut")}
+                  />
+                  <p className="text-[11px] leading-5 text-muted-foreground">
+                    {t(
+                      isMacRuntime()
+                        ? "settings.showShortcutHintMac"
+                        : "settings.showShortcutHint",
+                    )}
+                  </p>
+                  {showShortcutError ? (
+                    <p className="text-[12px] text-destructive">{t(showShortcutError)}</p>
+                  ) : null}
+                </div>
+              </SettingRow>
+            ) : null}
           </div>
+        ) : null}
 
-          <p className="mt-3 text-[12px] leading-6 text-foreground/88">
-            {t("settings.transferDescription")}
-          </p>
+        {activeTab === "security" ? (
+          <div>
+            {canToggleDeveloperMode ? (
+              <div className="divide-y divide-white/[0.05]">
+                <SettingRow
+                  icon={<Code2 className="h-4 w-4" />}
+                  label={t("settings.developerModeLabel")}
+                  description={t("settings.developerModeDescription")}
+                  trailing={
+                    <Switch
+                      checked={developerMode}
+                      onCheckedChange={(checked) => {
+                        void handleDeveloperModeChange(checked);
+                      }}
+                      aria-label={t("settings.developerModeLabel")}
+                      className="border-white/10 bg-white/[0.1] data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                    />
+                  }
+                />
+              </div>
+            ) : null}
 
-          <div className="mt-4 space-y-3">
-            <TransferActionCard
-              icon={<Download className="h-4 w-4" />}
-              title={t("settings.exportEntries")}
-              disabled={busy}
-              onClick={() => {
-                resetExportDialog();
-                setExportDialogOpen(true);
-              }}
-            />
+            <div className={canToggleDeveloperMode ? "mt-2 pt-5" : "pt-5"}>
+              <div className="flex items-center gap-2">
+                <LockKeyhole className="h-4 w-4 text-primary" />
+                <p className="mono-label text-[10px] text-muted-foreground">
+                  {t("settings.masterPasswordLabel")}
+                </p>
+              </div>
+              <p className="mt-3 text-[12px] leading-6 text-foreground/88">
+                {t("settings.masterPasswordDescription")}
+              </p>
 
-            <TransferActionCard
-              icon={<Upload className="h-4 w-4" />}
-              title={t("settings.importEntries")}
-              disabled={busy}
-              onClick={() => {
-                resetImportDialog();
-                setImportDialogOpen(true);
-              }}
-            />
+              <form
+                className="mt-4 space-y-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleMasterPasswordSubmit();
+                }}
+              >
+                <PasswordField
+                  id="settings-current-password"
+                  label={t("settings.currentPasswordLabel")}
+                  value={currentPassword}
+                  placeholder={t("settings.currentPasswordPlaceholder")}
+                  disabled={busy}
+                  onChange={(value) => {
+                    setCurrentPassword(value);
+                    if (passwordError) {
+                      setPasswordError(null);
+                    }
+                  }}
+                />
+
+                <PasswordField
+                  id="settings-new-password"
+                  label={t("settings.newPasswordLabel")}
+                  value={nextPassword}
+                  placeholder={t("settings.newPasswordPlaceholder")}
+                  disabled={busy}
+                  onChange={(value) => {
+                    setNextPassword(value);
+                    if (passwordError) {
+                      setPasswordError(null);
+                    }
+                  }}
+                />
+
+                <PasswordField
+                  id="settings-confirm-password"
+                  label={t("settings.confirmNewPasswordLabel")}
+                  value={confirmPassword}
+                  placeholder={t("settings.confirmNewPasswordPlaceholder")}
+                  disabled={busy}
+                  onChange={(value) => {
+                    setConfirmPassword(value);
+                    if (passwordError) {
+                      setPasswordError(null);
+                    }
+                  }}
+                />
+
+                {passwordError ? (
+                  <p className="text-[12px] text-destructive">{t(passwordError)}</p>
+                ) : null}
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={busy || !onChangeMasterPassword}
+                >
+                  <LockKeyhole className="h-4 w-4" />
+                  {t("settings.changePassword")}
+                </Button>
+              </form>
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div className="mt-6 h-px bg-white/[0.05]" />
+        {activeTab === "backup" ? (
+          <div>
+            <div className="pt-5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <p className="mono-label text-[10px] text-muted-foreground">
+                  {t("settings.transferLabel")}
+                </p>
+              </div>
 
-        <div className="pt-5">
-          <div className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4 text-primary" />
-            <p className="mono-label text-[10px] text-muted-foreground">
-              {t("settings.storagePathLabel")}
-            </p>
+              <p className="mt-3 text-[12px] leading-6 text-foreground/88">
+                {t("settings.transferDescription")}
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <TransferActionCard
+                  icon={<Download className="h-4 w-4" />}
+                  title={t("settings.exportEntries")}
+                  disabled={busy}
+                  onClick={() => {
+                    resetExportDialog();
+                    setExportDialogOpen(true);
+                  }}
+                />
+
+                <TransferActionCard
+                  icon={<Upload className="h-4 w-4" />}
+                  title={t("settings.importEntries")}
+                  disabled={busy}
+                  onClick={() => {
+                    resetImportDialog();
+                    setImportDialogOpen(true);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 h-px bg-white/[0.05]" />
+
+            <div className="pt-5">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-primary" />
+                <p className="mono-label text-[10px] text-muted-foreground">
+                  {t("settings.storagePathLabel")}
+                </p>
+              </div>
+              <p className="mt-3 text-[12px] leading-6 text-foreground/88">
+                {t("settings.storageEncryptedDescription")}
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-4 w-full"
+                onClick={() => {
+                  void appWindow.revealStorage();
+                }}
+              >
+                <FolderOpen className="h-4 w-4" />
+                {t("settings.openVaultFolder")}
+              </Button>
+            </div>
           </div>
-          <p className="mt-3 break-all text-[12px] leading-6 text-foreground/88">
-            {storagePath ?? t("settings.storagePathFallback")}
-          </p>
-        </div>
+        ) : null}
       </div>
 
       <Dialog
@@ -559,6 +812,20 @@ export function VaultSettingsCard({
               void handleExportSubmit();
             }}
           >
+            <PasswordField
+              id="export-master-password"
+              label={t("settings.exportMasterPasswordLabel")}
+              value={exportMasterPassword}
+              placeholder={t("settings.exportMasterPasswordPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setExportMasterPassword(value);
+                if (exportError) {
+                  setExportError(null);
+                }
+              }}
+            />
+
             <PasswordField
               id="export-backup-password"
               label={t("settings.exportPasswordLabel")}
@@ -626,6 +893,24 @@ export function VaultSettingsCard({
               void handleImportSubmit();
             }}
           >
+            <p className="text-[12px] leading-5 text-muted-foreground">
+              {t("settings.importUnencryptedWarning")}
+            </p>
+
+            <PasswordField
+              id="import-master-password"
+              label={t("settings.importMasterPasswordLabel")}
+              value={importMasterPassword}
+              placeholder={t("settings.importMasterPasswordPlaceholder")}
+              disabled={busy}
+              onChange={(value) => {
+                setImportMasterPassword(value);
+                if (importError) {
+                  setImportError(null);
+                }
+              }}
+            />
+
             <PasswordField
               id="import-backup-password"
               label={t("settings.importPasswordLabel")}
@@ -729,18 +1014,18 @@ function WindowAnchorPicker({
   value,
   onChange,
 }: {
-  value: WindowAnchor;
+  value: WindowAnchor | null;
   onChange: (value: WindowAnchor) => void;
 }) {
   const { t } = useI18n();
   const selectedLabelKey =
     WINDOW_ANCHOR_OPTIONS.find((option) => option.value === value)?.labelKey ??
-    "settings.windowAnchorBottomRight";
+    null;
 
   return (
     <div className="flex items-center gap-4">
       <div
-        className="relative h-[92px] w-[140px] shrink-0 rounded-[14px] border border-white/[0.08] bg-white/[0.03] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]"
+        className="relative h-[100px] w-[148px] shrink-0 rounded-[14px] border border-white/[0.08] bg-white/[0.03] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]"
         role="radiogroup"
         aria-label={t("settings.windowPositionLabel")}
       >
@@ -757,7 +1042,7 @@ function WindowAnchorPicker({
               title={t(option.labelKey)}
               onClick={() => onChange(option.value)}
               className={cn(
-                "absolute h-6 w-6 rounded-[8px] transition-colors",
+                "absolute h-5 w-5 rounded-[8px] transition-colors",
                 option.className,
                 active
                   ? "bg-primary shadow-[0_0_0_3px_rgba(99,102,241,0.28)]"
@@ -768,9 +1053,11 @@ function WindowAnchorPicker({
         })}
       </div>
 
-      <p className="text-[13px] font-medium text-foreground/88">
-        {t(selectedLabelKey)}
-      </p>
+      {selectedLabelKey ? (
+        <p className="text-[13px] font-medium text-foreground/88">
+          {t(selectedLabelKey)}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -878,10 +1165,14 @@ function SettingRow({
   children,
   icon,
   label,
+  description,
+  trailing,
 }: {
-  children: ReactNode;
+  children?: ReactNode;
   icon: ReactNode;
   label: string;
+  description?: string;
+  trailing?: ReactNode;
 }) {
   return (
     <div className="py-5">
@@ -889,8 +1180,16 @@ function SettingRow({
         <div className="mt-0.5 text-primary">{icon}</div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-medium text-foreground">{label}</p>
-          <div className="mt-3">{children}</div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[14px] font-medium text-foreground">{label}</p>
+            {trailing}
+          </div>
+          {description ? (
+            <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+          {children ? <div className="mt-3">{children}</div> : null}
         </div>
       </div>
     </div>

@@ -51,9 +51,17 @@ export interface ExportEntriesResult {
   error?: string;
 }
 
+export interface ImportSummary {
+  added: number;
+  updated: number;
+  foldersAdded: number;
+}
+
 export interface ImportEntriesResult {
   completed: boolean;
   payload?: VaultPayload;
+  summary?: ImportSummary;
+  unencrypted?: boolean;
   error?: string;
 }
 

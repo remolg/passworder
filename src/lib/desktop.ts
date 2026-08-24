@@ -20,8 +20,13 @@ import {
 const DEFAULT_WINDOW_ANCHOR: WindowAnchor = "bottom-right";
 const WINDOW_ANCHORS: WindowAnchor[] = [
   "top-left",
+  "top-center",
   "top-right",
+  "center-left",
+  "center",
+  "center-right",
   "bottom-left",
+  "bottom-center",
   "bottom-right",
 ];
 
@@ -85,11 +90,17 @@ export const vaultApi = {
   async deleteFolder(id: string) {
     return getDesktopApi().deleteFolder(id) as Promise<VaultPayload>;
   },
-  async exportEntries(password: string) {
-    return getDesktopApi().exportEntries(password) as Promise<ExportEntriesResult>;
+  async exportEntries(password: string, masterPassword: string) {
+    return getDesktopApi().exportEntries(
+      password,
+      masterPassword,
+    ) as Promise<ExportEntriesResult>;
   },
-  async importEntries(password?: string) {
-    return getDesktopApi().importEntries(password) as Promise<ImportEntriesResult>;
+  async importEntries(password: string | undefined, masterPassword: string) {
+    return getDesktopApi().importEntries(
+      password,
+      masterPassword,
+    ) as Promise<ImportEntriesResult>;
   },
   async reorderEntries(entryIds: string[]) {
     const api = getDesktopApi() as Partial<DesktopVaultApi>;
@@ -143,6 +154,14 @@ export const appWindow = {
 
     await getDesktopApi().openExternalUrl(url);
   },
+  async revealStorage() {
+    const revealStorage = window.passworder?.revealStorage;
+    if (!revealStorage) {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    await revealStorage();
+  },
   supportsAnchor() {
     return typeof window.passworder?.getWindowAnchor === "function";
   },
@@ -153,7 +172,7 @@ export const appWindow = {
     }
 
     const anchor = await getWindowAnchor();
-    return isWindowAnchor(anchor) ? anchor : DEFAULT_WINDOW_ANCHOR;
+    return isWindowAnchor(anchor) ? anchor : null;
   },
   async setAnchor(anchor: WindowAnchor) {
     const setWindowAnchor = window.passworder?.setWindowAnchor;
@@ -162,7 +181,55 @@ export const appWindow = {
     }
 
     const nextAnchor = await setWindowAnchor(anchor);
-    return isWindowAnchor(nextAnchor) ? nextAnchor : DEFAULT_WINDOW_ANCHOR;
+    return isWindowAnchor(nextAnchor) ? nextAnchor : null;
+  },
+  subscribeAnchor(callback: (anchor: WindowAnchor | null) => void) {
+    const subscribe = window.passworder?.onWindowAnchorChanged;
+    if (!subscribe) {
+      return () => {};
+    }
+
+    const subscriptionId = subscribe((anchor) => {
+      callback(isWindowAnchor(anchor) ? anchor : null);
+    });
+
+    return () => {
+      if (typeof subscriptionId === "number") {
+        window.passworder?.offWindowAnchorChanged?.(subscriptionId);
+      }
+    };
+  },
+  supportsWindowLock() {
+    return typeof window.passworder?.getWindowLocked === "function";
+  },
+  async getWindowLocked() {
+    const getWindowLocked = window.passworder?.getWindowLocked;
+    if (!getWindowLocked) {
+      return false;
+    }
+
+    return Boolean(await getWindowLocked());
+  },
+  async setWindowLocked(locked: boolean) {
+    const setWindowLocked = window.passworder?.setWindowLocked;
+    if (!setWindowLocked) {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    return Boolean(await setWindowLocked(locked));
+  },
+  subscribeWindowLock(callback: (locked: boolean) => void) {
+    const subscribe = window.passworder?.onWindowLockChanged;
+    if (!subscribe) {
+      return () => {};
+    }
+
+    const subscriptionId = subscribe(callback);
+    return () => {
+      if (typeof subscriptionId === "number") {
+        window.passworder?.offWindowLockChanged?.(subscriptionId);
+      }
+    };
   },
   supportsShowShortcut() {
     return typeof window.passworder?.getShowShortcut === "function";
@@ -184,6 +251,33 @@ export const appWindow = {
 
     const nextShortcut = await setShowShortcut(shortcut);
     return typeof nextShortcut === "string" ? nextShortcut : "";
+  },
+  supportsDeveloperMode() {
+    return typeof window.passworder?.isDeveloperModeAvailable === "function";
+  },
+  async isDeveloperModeAvailable() {
+    const isDeveloperModeAvailable = window.passworder?.isDeveloperModeAvailable;
+    if (!isDeveloperModeAvailable) {
+      return false;
+    }
+
+    return Boolean(await isDeveloperModeAvailable());
+  },
+  async getDeveloperMode() {
+    const getDeveloperMode = window.passworder?.getDeveloperMode;
+    if (!getDeveloperMode) {
+      return false;
+    }
+
+    return Boolean(await getDeveloperMode());
+  },
+  async setDeveloperMode(enabled: boolean) {
+    const setDeveloperMode = window.passworder?.setDeveloperMode;
+    if (!setDeveloperMode) {
+      throw new Error("errors.desktopRestartRequired");
+    }
+
+    return Boolean(await setDeveloperMode(enabled));
   },
 };
 

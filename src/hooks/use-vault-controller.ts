@@ -23,6 +23,9 @@ export function useVaultController() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeValues, setNoticeValues] = useState<
+    Record<string, string | number> | undefined
+  >(undefined);
   const [runtimeMissing, setRuntimeMissing] = useState(false);
 
   useEffect(() => {
@@ -72,12 +75,14 @@ export function useVaultController() {
     setError(null);
     if (successMessage) {
       setNotice(null);
+      setNoticeValues(undefined);
     }
 
     try {
       const result = await task();
       if (successMessage) {
         setNotice(successMessage);
+        setNoticeValues(undefined);
       }
       return result;
     } catch (caughtError) {
@@ -240,13 +245,14 @@ export function useVaultController() {
     return true;
   }
 
-  async function exportEntries(password: string) {
+  async function exportEntries(password: string, masterPassword: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
+    setNoticeValues(undefined);
 
     try {
-      const result = await vaultApi.exportEntries(password);
+      const result = await vaultApi.exportEntries(password, masterPassword);
       if (result.error) {
         const message = toErrorMessage(result.error);
         setError(message);
@@ -268,13 +274,14 @@ export function useVaultController() {
     }
   }
 
-  async function importEntries(password?: string) {
+  async function importEntries(password: string | undefined, masterPassword: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
+    setNoticeValues(undefined);
 
     try {
-      const result = await vaultApi.importEntries(password);
+      const result = await vaultApi.importEntries(password, masterPassword);
       if (result.error) {
         const message = toErrorMessage(result.error);
         setError(message);
@@ -286,7 +293,15 @@ export function useVaultController() {
       }
 
       setPayload(result.payload);
-      setNotice("notice.importCompleted");
+      setNotice(
+        result.unencrypted
+          ? "notice.importCompletedUnencrypted"
+          : "notice.importCompleted",
+      );
+      setNoticeValues({
+        added: result.summary?.added ?? 0,
+        updated: result.summary?.updated ?? 0,
+      });
       return true;
     } catch (caughtError) {
       const message = toErrorMessage(caughtError);
@@ -343,10 +358,12 @@ export function useVaultController() {
     busy,
     error,
     notice,
+    noticeValues,
     runtimeMissing,
     clearMessages: () => {
       setError(null);
       setNotice(null);
+      setNoticeValues(undefined);
     },
     initializeVault,
     unlockVault,
